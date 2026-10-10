@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .card { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 10px; }
+      .card-highlight { fill: #1c2128; stroke: #58a6ff; stroke-width: 1.5; rx: 10px; }
+      .card-pass { fill: #16241a; stroke: #238636; stroke-width: 1.5; rx: 10px; }
+      .card-fail { fill: #2c1517; stroke: #da3633; stroke-width: 1.5; rx: 10px; }
+      .section-box { fill: #161b22; fill-opacity: 0.5; stroke: #30363d; stroke-dasharray: 4; stroke-width: 1; rx: 12px; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: #58a6ff; text-transform: uppercase; letter-spacing: 0.5px; }
+      .header { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #f0f6fc; }
+      .subtext { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; fill: #8b949e; }
+      .badge { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; }
+      .badge-pass { fill: #3fb950; }
+      .badge-fail { fill: #f85149; }
+      .badge-info { fill: #58a6ff; }
+      .line { stroke: #58a6ff; stroke-width: 1.5; fill: none; }
+      .line-muted { stroke: #30363d; stroke-width: 1.5; fill: none; }
+      .line-pass { stroke: #3fb950; stroke-width: 1.5; fill: none; }
+      .line-fail { stroke: #f85149; stroke-width: 1.5; fill: none; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arrow-pass" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#3fb950"/>
+    </marker>
+    <marker id="arrow-fail" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f85149"/>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#8b949e"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="620" class="bg" rx="14"/>
+
+  <!-- Top Banner / Title -->
+  <text x="40" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#f0f6fc">⚖️ LLM Evaluation Engine &amp; CI/CD Regression Gate</text>
+  <text x="40" y="58" class="subtext">Production Architecture • Concurrency Isolation • Statistical Ordinal Calibration</text>
+
+  <!-- Section 1: GitHub Actions Trigger -->
+  <rect x="30" y="80" width="260" height="510" class="section-box"/>
+  <text x="45" y="105" class="title">1. CI/CD Ingestion Layer</text>
+
+  <!-- Node: Pull Request Trigger -->
+  <rect x="45" y="125" width="230" height="80" class="card"/>
+  <text x="60" y="150" class="header">Pull Request / Push</text>
+  <text x="60" y="170" class="subtext">• prompts/**</text>
+  <text x="60" y="186" class="subtext">• data/**  • scripts/**</text>
+
+  <!-- Node: GitHub Runner -->
+  <rect x="45" y="240" width="230" height="90" class="card-highlight"/>
+  <text x="60" y="265" class="header">ubuntu-latest (Python 3.9)</text>
+  <text x="60" y="285" class="subtext">• actions/checkout@v4</text>
+  <text x="60" y="301" class="subtext">• actions/setup-python@v5 (cache: pip)</text>
+  <text x="60" y="317" class="subtext">• Injects OPENAI_API_KEY secret</text>
+
+  <!-- Node: Baseline Inputs -->
+  <rect x="45" y="365" width="230" height="95" class="card"/>
+  <text x="60" y="390" class="header">Static Benchmark Assets</text>
+  <text x="60" y="410" class="subtext">📄 eval_golden_set.jsonl (10 samples)</text>
+  <text x="60" y="428" class="subtext">📋 judge_rubric.txt (1-5 Rubric)</text>
+  <text x="60" y="446" class="subtext">🛡️ Anti-Verbosity &amp; Evidence-First</text>
+
+  <!-- Connection: PR to Runner -->
+  <line x1="160" y1="205" x2="160" y2="238" class="line" marker-end="url(#arrow)"/>
+  <!-- Connection: Runner to Inputs -->
+  <line x1="160" y1="330" x2="160" y2="363" class="line-muted" marker-end="url(#arrow-muted)"/>
+
+  <!-- Connection to Engine -->
+  <line x1="275" y1="285" x2="335" y2="285" class="line" marker-end="url(#arrow)"/>
+
+  <!-- Section 2: Core Evaluation Engine -->
+  <rect x="320" y="80" width="310" height="510" class="section-box"/>
+  <text x="335" y="105" class="title">2. Async Evaluation Engine</text>
+
+  <!-- Node: Concurrency Control -->
+  <rect x="335" y="125" width="280" height="85" class="card"/>
+  <text x="350" y="150" class="header">Concurrency Primitives</text>
+  <text x="350" y="170" class="subtext">⚡ aiolimiter.AsyncLimiter (60 calls/min)</text>
+  <text x="350" y="188" class="subtext">🔒 asyncio.Semaphore (5 inflight)</text>
+  <text x="350" y="202" class="badge badge-info">Python 3.9 Loop-Safe</text>
+
+  <!-- Node: LLM Judge -->
+  <rect x="335" y="240" width="280" height="110" class="card-highlight"/>
+  <text x="350" y="265" class="header">LLM Judge Pipeline</text>
+  <text x="350" y="285" class="subtext">🤖 model: gpt-4o-mini (temp=0.0)</text>
+  <text x="350" y="303" class="subtext">📐 Pydantic: JudgeOutput (score 1-5)</text>
+  <text x="350" y="321" class="subtext">🔁 tenacity: 5 retries w/ exp backoff</text>
+  <text x="350" y="337" class="badge badge-info">100% Guaranteed JSON Schema</text>
+
+  <!-- Node: Statistical Metrics -->
+  <rect x="335" y="380" width="280" height="190" class="card"/>
+  <text x="350" y="405" class="header">Statistical Metrics Engine</text>
+  <text x="350" y="427" class="subtext">📊 Quadratic Weighted Kappa (QWK):</text>
+  <text x="350" y="443" class="badge badge-pass" font-size="11">   Measured: 0.953  (Threshold ≥ 0.70)</text>
+  <text x="350" y="465" class="subtext">🎯 Adjacent Agreement (±1 delta):</text>
+  <text x="350" y="481" class="badge badge-pass" font-size="11">   Measured: 100%   (Threshold ≥ 90%)</text>
+  <text x="350" y="503" class="subtext">⚖️ Lenience Drift (Δμ):</text>
+  <text x="350" y="519" class="badge badge-pass" font-size="11">   Measured: -0.30  (Threshold ≤ 0.35)</text>
+  <text x="350" y="541" class="subtext">🚫 Severe Misalignments (|Δ| ≥ 2):</text>
+  <text x="350" y="557" class="badge badge-pass" font-size="11">   Found: 0         (Max Allowed: 0)</text>
+
+  <!-- Connections in Engine -->
+  <line x1="475" y1="210" x2="475" y2="238" class="line" marker-end="url(#arrow)"/>
+  <line x1="475" y1="350" x2="475" y2="378" class="line" marker-end="url(#arrow)"/>
+
+  <!-- Section 3: Gate & Outputs -->
+  <rect x="660" y="80" width="270" height="510" class="section-box"/>
+  <text x="675" y="105" class="title">3. Quality Gate &amp; Artifacts</text>
+
+  <!-- Node: Quality Gate Decision -->
+  <rect x="675" y="125" width="240" height="75" class="card-highlight"/>
+  <text x="690" y="150" class="header">Regression Gate Decision</text>
+  <text x="690" y="170" class="subtext">Evaluate metrics vs strict thresholds</text>
+  <text x="690" y="186" class="subtext">Zero-tolerance on severe regressions</text>
+
+  <!-- Node: Passed Branch -->
+  <rect x="675" y="225" width="112" height="60" class="card-pass"/>
+  <text x="688" y="248" class="header" fill="#3fb950">PASSED ✅</text>
+  <text x="688" y="268" class="subtext">exit code 0</text>
+
+  <!-- Node: Failed Branch -->
+  <rect x="803" y="225" width="112" height="60" class="card-fail"/>
+  <text x="816" y="248" class="header" fill="#f85149">FAILED ❌</text>
+  <text x="816" y="268" class="subtext">Blocks PR merge</text>
+
+  <!-- Node: Artifacts -->
+  <rect x="675" y="315" width="240" height="110" class="card"/>
+  <text x="690" y="338" class="header">Artifact Archive</text>
+  <text x="690" y="358" class="subtext">📁 severe_misalignments.jsonl</text>
+  <text x="690" y="376" class="subtext">📄 summary.md</text>
+  <text x="690" y="396" class="subtext">actions/upload-artifact@v4</text>
+  <text x="690" y="412" class="badge badge-info">14-Day Retention</text>
+
+  <!-- Node: PR Sticky Comment -->
+  <rect x="675" y="450" width="240" height="115" class="card"/>
+  <text x="690" y="475" class="header">Sticky PR Feedback</text>
+  <text x="690" y="495" class="subtext">🤖 actions/github-script@v7</text>
+  <text x="690" y="513" class="subtext">📌 Idempotently updates bot comment</text>
+  <text x="690" y="531" class="subtext">📝 Includes 5x5 Confusion Matrix</text>
+  <text x="690" y="549" class="subtext">🔗 Linked to workflow run ID</text>
+
+  <!-- Connections from Engine to Gate -->
+  <line x1="615" y1="460" x2="655" y2="460" class="line"/>
+  <line x1="655" y1="460" x2="655" y2="162" class="line"/>
+  <line x1="655" y1="162" x2="673" y2="162" class="line" marker-end="url(#arrow)"/>
+
+  <!-- Connections from Gate to Pass/Fail -->
+  <line x1="731" y1="200" x2="731" y2="223" class="line-pass" marker-end="url(#arrow-pass)"/>
+  <line x1="859" y1="200" x2="859" y2="223" class="line-fail" marker-end="url(#arrow-fail)"/>
+
+  <!-- Connections from Decisions to Artifacts -->
+  <line x1="731" y1="285" x2="731" y2="313" class="line-muted" marker-end="url(#arrow-muted)"/>
+  <line x1="859" y1="285" x2="859" y2="313" class="line-muted" marker-end="url(#arrow-muted)"/>
+
+  <!-- Connection from Artifacts to PR Comment -->
+  <line x1="795" y1="425" x2="795" y2="448" class="line" marker-end="url(#arrow)"/>
+
+</svg>

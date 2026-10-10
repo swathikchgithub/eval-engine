@@ -1,0 +1,125 @@
+name: LLM Judge CI Regression Gate
+
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - 'data/**'
+      - 'scripts/**'
+      - 'requirements.txt'
+      - '.github/workflows/eval-gate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'prompts/**'
+      - 'data/**'
+      - 'scripts/**'
+      - 'requirements.txt'
+      - '.github/workflows/eval-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  eval-gate:
+    name: Evaluation Regression Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Evaluation Gate
+        id: eval_run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python scripts/eval_gate.py
+
+      - name: Upload Severe Misalignments Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: severe-misalignments
+          path: artifacts/severe_misalignments.jsonl
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Evaluation Summary Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-summary
+          path: artifacts/summary.md
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Post Sticky PR Comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summaryPath = 'artifacts/summary.md';
+            let summaryContent = '';
+
+            if (fs.existsSync(summaryPath)) {
+              summaryContent = fs.readFileSync(summaryPath, 'utf8').trim();
+            } else {
+              summaryContent = '### ⚠️ LLM Judge CI Regression Gate\n\nEvaluation run completed, but no summary artifact was generated.';
+            }
+
+            const headerIdentifier = '<!-- eval-gate-pr-comment -->';
+            const commentBody = `${headerIdentifier}\n${summaryContent}\n\n*Evaluated by [run #${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})*`;
+
+            const prNumber = context.payload.pull_request ? context.payload.pull_request.number : context.issue.number;
+            if (!prNumber) {
+              console.log('No pull request number identified, skipping sticky comment.');
+              return;
+            }
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+              });
+
+              const existingComment = comments.find(c =>
+                c.body && c.body.includes(headerIdentifier)
+              );
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: commentBody,
+                });
+                console.log(`Updated existing sticky comment (id: ${existingComment.id}) on PR #${prNumber}`);
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: commentBody,
+                });
+                console.log(`Created new sticky comment on PR #${prNumber}`);
+              }
+            } catch (error) {
+              console.error(`Failed to post or update PR comment: ${error.message}`);
+            }

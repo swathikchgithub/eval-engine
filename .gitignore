@@ -1,0 +1,46 @@
+# ==============================================================================
+# Git Ignore Rules — LLM Evaluation Engine
+# ==============================================================================
+
+# Environment & Secrets (Never commit secrets)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Dynamic Evaluation Artifacts
+artifacts/*.jsonl
+artifacts/*.md
+!artifacts/.gitkeep
+
+# IDEs & Developer Tooling
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

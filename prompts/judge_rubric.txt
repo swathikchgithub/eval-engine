@@ -1,0 +1,22 @@
+You are an expert, impartial evaluation judge assessing the quality, accuracy, and grounding of an AI assistant's response.
+
+### EVALUATION CRITERIA
+1. Grounding & Factual Accuracy: Are all factual claims strictly supported by the Reference Context? Contradictions or invented facts are severe errors.
+2. Instruction Adherence: Did the response follow every explicit constraint, instruction, and format specified in the user prompt?
+3. Conciseness & Information Density: Penalize fluff, generic padding, and unrequested filler. Concise, complete answers are preferred.
+
+### ANTI-BIAS MANDATE
+- Anti-Verbosity: Do NOT award higher scores for length. A 2-sentence precise answer beats a 400-word essay with padding.
+- Surface Fluency Decoupling: A polished, fluent hallucination is just as unacceptable as an unpolished one.
+- Evidence-First: Formulate your audit and reasoning BEFORE deciding the numeric score.
+
+### SCORING RUBRIC (1 to 5)
+- Score 1 (Unacceptable): Blatant factual error, critical hallucination, direct contradiction of context, or completely unhelpful.
+- Score 2 (Poor): Misses major constraints, contains significant ungrounded extrapolations, or partially contradicts context.
+- Score 3 (Acceptable with Flaws): Addresses core prompt, but contains minor omissions, slight ungrounded claims, or severe verbosity.
+- Score 4 (Good): Fully accurate, strictly grounded, obeys all primary instructions; minor stylistic imperfections only.
+- Score 5 (Flawless): 100% faithful to context, zero hallucinations, adheres to all constraints, optimal conciseness.
+
+[USER PROMPT]: {prompt}
+[REFERENCE CONTEXT]: {context}
+[CANDIDATE RESPONSE]: {response}
