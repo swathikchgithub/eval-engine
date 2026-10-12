@@ -329,13 +329,18 @@ For environments using Python backends (FastAPI/Tornado), the shadow engine prov
   - **Golden Benchmark Explorer:** Filterable dataset inspector with score chips and context viewer.
 - **Metrics API (`app/api/metrics/route.ts`):** Serves current gate metrics, golden set items, and recent shadow evaluation logs.
 
-### 8.5 Unit Test Verification (`tests/test_shadow_eval.py`)
-5 dedicated unit tests validate:
-- Keyword sampling trigger detection.
-- Uniform random sampling behavior.
-- Non-blocking enqueuing (<10ms).
-- End-to-end background evaluation and log persistence.
-- Graceful worker shutdown.
+### 8.5 Unit Test Verification (`tests/test_shadow_eval.py` & `tests/test_eval_metrics.py`)
+- **Queue & Sampler (`tests/test_shadow_eval.py`):** 5 tests validate keyword sampling triggers, uniform random rates, microsecond enqueue (<10ms), worker queue execution, and clean shutdown.
+- **Statistical Formulas (`tests/test_eval_metrics.py`):** 5 tests validate QWK edge cases, adjacent agreement ($\pm 1$), severe error slicing ($|\Delta| \ge 2$), and lenience drift mathematical consistency.
+- **Live Edge API Contracts (`tests/test_e2e_api.py`):** 5 tests validate live HTTP responses from `/api/metrics` and `/api/chat` against production edge nodes.
+
+### 8.6 Playwright Browser End-to-End Test Architecture (`e2e/dashboard.spec.ts`)
+To prevent visual and client-side JavaScript regressions, Playwright tests the real DOM in headless Chromium (`playwright.config.ts`):
+1. **Header & KPI Rendering:** Verifies CI gate badge (`CI GATE: PASSED`), 5 KPI metric cards, and sprint layer progress.
+2. **Interactive Workflow Modal:** Opens `#open-workflow-modal-btn`, verifies tab switching between Architecture, Developer CI, Production Edge, and Docs, and closes cleanly.
+3. **Golden Benchmark Explorer:** Verifies all 10 ground-truth samples render in the benchmark table.
+4. **Interactive Sandbox Dispatch:** Fills prompt/context textareas, clicks `#send-edge-request-btn`, and verifies candidate response card with latency badge appears in `<15s`.
+5. **5×5 Confusion Matrix Heatmap:** Verifies 25 ordinal grid cells render without severe off-diagonal distributions.
 
 ---
 

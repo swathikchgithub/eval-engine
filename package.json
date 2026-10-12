@@ -8,9 +8,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:py": "python -m unittest discover tests",
-    "eval:gate": "python scripts/eval_gate.py",
-    "eval:shadow": "python scripts/shadow_eval.py"
+    "test:py": "./venv/bin/python -m unittest discover tests",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:py && npm run test:e2e",
+    "eval:gate": "./venv/bin/python scripts/eval_gate.py",
+    "eval:shadow": "./venv/bin/python scripts/shadow_eval.py"
   },
   "dependencies": {
     "@vercel/functions": "^1.4.2",
@@ -19,6 +21,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

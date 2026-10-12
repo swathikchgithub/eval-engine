@@ -27,6 +27,8 @@ venv.bak/
 node_modules/
 .next/
 out/
+test-results/
+playwright-report/
 
 # Dynamic Evaluation Artifacts
 artifacts/*.jsonl

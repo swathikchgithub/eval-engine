@@ -49,25 +49,43 @@ EVAL_ROUTER_MODE=openai
 
 ## 2. Running Local Evaluations & Tests
 
-### 2.1 Running the Unit Test Suite
-Verify that all router adapters, parsers, and circuit breakers function properly:
+### 2.1 Running the Python Unit & API Test Suite (28 Tests)
+Verify all router adapters, statistical kappa formulas, async queue workers, and live Edge API routes:
 ```bash
 python -m unittest discover tests
 ```
 
-### 2.2 Standard Evaluation Execution
+### 2.2 Running Playwright Browser E2E Tests (5 Tests)
+Verify the production web dashboard in headless Chromium:
+```bash
+npm run test:e2e
+```
+This tests real user interactions against [`https://eval-engine-coral.vercel.app`](https://eval-engine-coral.vercel.app):
+- Dashboard KPI cards and CI status badge rendering
+- Workflow Guide modal opening, tab navigation, and closing
+- Golden benchmark dataset explorer table (10 rows)
+- Live Edge sandbox form dispatch and latency card rendering
+- 5×5 ordinal confusion matrix heatmap cell rendering
+
+### 2.3 Running the Unified Test Runner (33 Tests Total)
+Run both backend and browser test suites concurrently:
+```bash
+npm run test:all
+```
+
+### 2.4 Standard Evaluation Execution
 Run the full evaluation gate against the golden benchmark using the configured router:
 ```bash
 python scripts/eval_gate.py
 ```
 
-### 2.3 Testing Hybrid Fallback Mode
+### 2.5 Testing Hybrid Fallback Mode
 To test automatic fallback from open-weights to OpenAI when the primary endpoint is unavailable:
 ```bash
 EVAL_ROUTER_MODE=hybrid python scripts/eval_gate.py
 ```
 
-### 2.4 Verifying Artifacts
+### 2.6 Verifying Artifacts
 Following execution, check the generated artifacts:
 * **Evaluation Summary:** [artifacts/summary.md](artifacts/summary.md) (includes router backend, average latency, and provider attribution)
 * **Severe Misalignments:** [artifacts/severe_misalignments.jsonl](artifacts/severe_misalignments.jsonl) (empty if all predictions are within $\pm 1$)

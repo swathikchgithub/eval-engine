@@ -178,8 +178,14 @@ export OPENAI_API_KEY="your-openai-api-key"
 # Run the CI regression gate against the golden benchmark
 python scripts/eval_gate.py
 
-# Run all 28 unit and end-to-end tests
+# Run all 28 Python unit & API integration tests
 python -m unittest discover tests
+
+# Run all 5 Playwright browser E2E tests (headless Chromium)
+npm run test:e2e
+
+# Run the complete unified test suite (33 tests total)
+npm run test:all
 
 # Or run specific test suites:
 python -m unittest tests/test_eval_metrics.py  # Statistical formulas & kappa math
@@ -280,6 +286,8 @@ eval-engine/
 │   ├── PRD.md                     # Product Requirements Document
 │   ├── TDD.md                     # Technical Design Document
 │   └── WORKFLOW.md                # Developer Workflow & Sync Protocol
+├── e2e/
+│   └── dashboard.spec.ts          # Playwright browser E2E tests (modal, sandbox, matrix)
 ├── prompts/
 │   └── judge_rubric.txt           # Prompt template and evaluation rubric
 ├── scripts/
@@ -296,6 +304,7 @@ eval-engine/
 ├── LICENSE                        # MIT License
 ├── next.config.mjs                # Next.js 14 configuration
 ├── package.json                   # Web application dependencies & scripts
+├── playwright.config.ts           # Playwright E2E browser test configuration
 ├── requirements.txt               # Pinned Python dependencies
 ├── SPRINT_DASHBOARD.md            # Sprint milestone and layer tracker
 ├── tsconfig.json                  # TypeScript compiler options
@@ -314,7 +323,7 @@ eval-engine/
   * Edge shadow evaluations via `@vercel/functions` `waitUntil` (`app/api/chat/route.ts`).
   * Latency-isolated production sampling (`ShadowSampler`: keyword triggers + 10% uniform rate).
   * Interactive Next.js 14 dark-mode dashboard (`app/page.tsx`) with live evaluation sandbox, confusion matrix, and interactive workflow guide modal (`WorkflowModal.tsx`).
-  * Test suite expanded to 28 passing unit & E2E tests (`tests/test_shadow_eval.py`, `tests/test_eval_metrics.py`, `tests/test_e2e_api.py`).
+  * Complete test suite expanded to 33 passing unit, live API, and Playwright browser tests (`npm run test:all`).
 * **Layer 5: Continuous Calibration & Live Observability** *(Up Next)*:
   * Longitudinal drift monitoring dashboard.
   * Automated alerts on distribution shift and dynamic golden set expansion from severe failure slices.
