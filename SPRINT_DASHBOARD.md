@@ -26,6 +26,8 @@
 | **Layer 3** | **Hybrid Routing & Open Weights** | ✅ **COMPLETED** | • [`scripts/router.py`](scripts/router.py) (OpenAI, vLLM/RunPod, HybridRouter)<br>• 3-failure circuit breaker tripping & fallback<br>• [`tests/test_router.py`](tests/test_router.py) unit test suite<br>• Latency tracking & provider breakdown | Verified: 13 unit tests passing, live execution verified |
 | **Layer 4** | **Production Shadow Eval (Vercel)** | ✅ **COMPLETED** | • [`app/api/chat/route.ts`](app/api/chat/route.ts) (Edge runtime + `waitUntil`)<br>• [`scripts/shadow_eval.py`](scripts/shadow_eval.py) (`ShadowSampler` + background worker queue)<br>• [`e2e/dashboard.spec.ts`](e2e/dashboard.spec.ts) (Playwright browser E2E)<br>• [`tests/test_shadow_eval.py`](tests/test_shadow_eval.py), [`tests/test_eval_metrics.py`](tests/test_eval_metrics.py), [`tests/test_e2e_api.py`](tests/test_e2e_api.py)<br>• [`app/page.tsx`](app/page.tsx) & [`app/api/metrics/route.ts`](app/api/metrics/route.ts) (Next.js 14 dashboard) | Verified: **Live on Vercel** ([eval-engine-coral.vercel.app](https://eval-engine-coral.vercel.app/)), zero-latency enqueue (<10ms), edge latency ~13ms |
 | **Layer 5** | **Continuous Calibration & Observability** | ✅ **COMPLETED** | • [`scripts/drift_monitor.py`](scripts/drift_monitor.py) (Rolling QWK, PSI, TVD calculations)<br>• Inbound Edge Rate Limiter (60 req/min per IP with HTTP 429 & Retry-After headers)<br>• Automated Failure Slicing (`artifacts/curated_candidates.jsonl`)<br>• Layer 5 Dashboard panel in [`app/page.tsx`](app/page.tsx)<br>• [`tests/test_drift_monitor.py`](tests/test_drift_monitor.py) (8 unit tests) | Verified: All 36 Python tests passing, PSI and TVD statistical divergence verified, failure slices auto-extracted |
+| **Layer 6** | **Security Hardening & Adversarial Harness** | ✅ **COMPLETED** | • Cloudflare Security Audit Harness integration ([`.agents/skills/security-audit/`](.agents/skills/security-audit/))<br>• Client IP spoof-proofing & cache eviction in [`app/api/chat/route.ts`](app/api/chat/route.ts)<br>• Anti-injection XML boundaries in [`prompts/judge_rubric.txt`](prompts/judge_rubric.txt)<br>• Schema-validated audit findings (`artifacts/security-audit/findings.json`) | Verified: 3 findings schema-validated (`PASS: 3 valid`), 0 regression errors on evaluation gate |
+| **Layer 7** | **Autonomous Monitoring Agent & Synthetics** | ✅ **COMPLETED** | • Multi-tier monitoring agent in [`scripts/monitor_agent.py`](scripts/monitor_agent.py) (`npm run monitor`)<br>• 9 unit tests in [`tests/test_monitor_agent.py`](tests/test_monitor_agent.py)<br>• Automated cloud monitor workflow in [`.github/workflows/health-monitor.yml`](.github/workflows/health-monitor.yml)<br>• Self-updating executive dashboard ([`artifacts/monitoring/STATUS_REPORT.md`](artifacts/monitoring/STATUS_REPORT.md)) | Verified: Live sweep against Vercel endpoint confirms `🟢 HEALTHY`, median latency <200ms |
 
 ---
 
@@ -44,9 +46,10 @@
 
 ## 🎯 Verification & Testing Summary
 
-1. **Python Test Pyramid:** 36 automated unit tests passing in ~1.4s (`npm run test:py`).
-2. **Browser End-to-End Suite:** Playwright tests verifying DOM, interactive modal, edge sandbox, and calibration panel (`npm run test:e2e`).
+1. **Python Test Pyramid:** 45 automated unit tests passing in ~1.5s (`npm run test:py`).
+2. **Browser End-to-End Suite:** 6 Playwright tests verifying DOM, interactive modal, edge sandbox, and calibration panel (`npm run test:e2e`).
 3. **Drift Monitoring CLI:** `npm run eval:drift` analyzes telemetry and exports curation candidates.
+4. **Live Synthetics Monitor:** `npm run monitor` autonomously checks edge health, gate metrics, and UI.
 
 ---
 
