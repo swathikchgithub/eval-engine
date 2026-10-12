@@ -100,6 +100,7 @@ class OpenAIJudgeClient(BaseJudgeClient):
         completion = await self.client.beta.chat.completions.parse(
             model=self.model,
             temperature=self.temperature,
+            seed=42,
             messages=[
                 {"role": "system", "content": "You are a strict, objective evaluation judge."},
                 {"role": "user", "content": prompt_text},
