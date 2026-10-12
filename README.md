@@ -88,10 +88,16 @@ flowchart TD
 
 ### Layer 2: CI/CD Regression Gate
 * **GitHub Actions Workflow (`.github/workflows/eval-gate.yml`)**:
-  * **Path Filtering**: Automatically triggers when modifications affect `prompts/**`, `data/**`, `scripts/**`, `requirements.txt`, or the workflow itself.
+  * **Path Filtering**: Automatically triggers when modifications affect `prompts/**`, `data/**`, `scripts/**`, `tests/**`, `requirements.txt`, or the workflow itself.
   * **Artifact Upload**: Retains `artifacts/severe_misalignments.jsonl` and `artifacts/summary.md` on every workflow run with a 14-day retention policy.
   * **Sticky PR Comments**: Uses `actions/github-script@v7` to post or idempotently update a single summary comment per PR, preventing notification noise across iterative commits.
   * **Branch Protection Gate**: Fails the CI job with exit code `1` if any evaluation threshold is violated, blocking PR merges.
+
+### Layer 3: Hybrid Routing & Open Weights
+* **Multi-Backend Router (`scripts/router.py`)**: Abstracted judge interface supporting `OpenAIJudgeClient` (`gpt-4o-mini`) and `VLLMJudgeClient` targeting self-hosted open weights (e.g. Meta-Llama-3.1-8B-Instruct on RunPod Serverless or local vLLM).
+* **Circuit Breaker & Fallback (`HybridJudgeRouter`)**: Automatically trips open after 3 consecutive primary failures, instantly routing evaluations to the secondary provider to protect throughput.
+* **Telemetry & Latency Tracking**: Records per-sample latency and provider attribution in reports and artifacts.
+* **Unit Test Suite (`tests/test_router.py`)**: 13 unit tests validating JSON parsers, clients, and circuit breaking.
 
 ---
 
@@ -228,7 +234,10 @@ eval-engine/
 ├── prompts/
 │   └── judge_rubric.txt           # Prompt template and evaluation rubric
 ├── scripts/
-│   └── eval_gate.py               # Core async evaluation pipeline & regression gate
+│   ├── eval_gate.py               # Core async evaluation pipeline & regression gate
+│   └── router.py                  # Multi-backend judge router (OpenAI, vLLM, Hybrid)
+├── tests/
+│   └── test_router.py             # Router unit tests & circuit breaker test suite
 ├── .env.local                     # Local secrets configuration (git-ignored)
 ├── .gitignore                     # Git ignore rules for virtualenvs, caches, secrets
 ├── LICENSE                        # MIT License
@@ -241,12 +250,12 @@ eval-engine/
 
 ## 🗺️ Roadmap & Next Layers
 
-* **Layer 3: Hybrid Routing & Self-Hosted Open Weights** *(Up Next)*:
-  * Multi-provider router abstraction supporting OpenAI and OpenAI-compatible vLLM endpoints.
-  * Integration with self-hosted Llama 3.1 8B on RunPod Serverless for cost and latency optimization.
-  * Automatic circuit breaker fallback from open-weights to OpenAI if latency or SLA degrades.
-* **Layer 4: Production Shadow Evaluation**:
-  * Edge shadow evaluations via Vercel `waitUntil` / background worker queues.
+* **Layer 3: Hybrid Routing & Self-Hosted Open Weights** *(Completed)*:
+  * Multi-provider router abstraction (`scripts/router.py`) supporting OpenAI and OpenAI-compatible vLLM endpoints.
+  * Integration with self-hosted Llama 3.1 8B on RunPod Serverless with 3-failure circuit breaker tripping.
+  * Unit test suite (`tests/test_router.py`) with 13 passing test cases.
+* **Layer 4: Production Shadow Evaluation (Vercel)** *(Up Next)*:
+  * Edge shadow evaluations via Vercel `waitUntil` / Next.js Edge runtime.
   * Latency-isolated production sampling (10% random traffic + high-uncertainty slices).
 * **Layer 5: Continuous Calibration & Live Observability**:
   * Longitudinal drift monitoring dashboard.

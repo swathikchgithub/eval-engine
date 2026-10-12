@@ -57,8 +57,8 @@ Every PR must satisfy the following statistical criteria against [data/eval_gold
 ```
 Layer 1: Core Eval Harness (Done)
     └── Layer 2: CI/CD Regression Gate (Done)
-            └── Layer 3: Hybrid Routing & Open-Weights (Up Next)
-                    └── Layer 4: Production Shadow Eval (Backlog)
+            └── Layer 3: Hybrid Routing & Open-Weights (Done)
+                    └── Layer 4: Production Shadow Eval (Up Next)
                             └── Layer 5: Continuous Calibration & Observability (Backlog)
 ```
 
@@ -71,17 +71,19 @@ Layer 1: Core Eval Harness (Done)
 
 ### Layer 2: CI/CD Regression Gate *(Status: Completed)*
 * Automated GitHub Actions CI workflow ([.github/workflows/eval-gate.yml](.github/workflows/eval-gate.yml)).
-* PR path-filtering on `prompts/**`, `data/**`, `scripts/**`, and dependencies.
+* PR path-filtering on `prompts/**`, `data/**`, `scripts/**`, `tests/**`, and dependencies.
 * Sticky PR comment reporting via `actions/github-script@v7`.
 * Artifact retention for `severe_misalignments.jsonl` and `summary.md`.
 
-### Layer 3: Hybrid Routing & Self-Hosted Open Weights *(Status: Up Next)*
-* Multi-backend judge abstraction supporting OpenAI (`gpt-4o-mini`) and OpenAI-compatible vLLM endpoints (RunPod Serverless).
-* Integration with self-hosted Llama-3.1-8B-Instruct.
-* Automatic circuit breaker fallback from open-weights to OpenAI on high latency or provider failure.
+### Layer 3: Hybrid Routing & Self-Hosted Open Weights *(Status: Completed)*
+* Multi-backend judge abstraction ([scripts/router.py](scripts/router.py)) with `BaseJudgeClient`, `OpenAIJudgeClient`, `VLLMJudgeClient`, and `HybridJudgeRouter`.
+* Support for OpenAI (`gpt-4o-mini`) and OpenAI-compatible vLLM endpoints (e.g. Meta-Llama-3.1-8B-Instruct on RunPod Serverless).
+* Automatic 3-failure circuit breaker tripping and seamless fallback routing to OpenAI.
+* Latency tracking (`latency_ms`) and per-sample provider attribution.
+* Comprehensive unit test suite ([tests/test_router.py](tests/test_router.py)) covering all modes and circuit breakers.
 
-### Layer 4: Production Shadow Evaluation *(Status: Backlog)*
-* Edge-isolated shadow evaluation using `waitUntil` (Vercel / Cloudflare Workers).
+### Layer 4: Production Shadow Evaluation *(Status: Up Next)*
+* Edge-isolated shadow evaluation using `waitUntil` (Vercel / Next.js Edge runtime).
 * Asynchronous queue processing for real user inference auditing without added latency.
 * Dynamic traffic sampling (10% random + high-uncertainty slicing).
 

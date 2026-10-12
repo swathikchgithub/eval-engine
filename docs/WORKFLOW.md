@@ -29,32 +29,50 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 1.3 Setting Environment Variables
-You can either export `OPENAI_API_KEY` in your shell or populate [`.env.local`](.env.local) (which is automatically ignored by Git):
+### 1.3 Setting Environment Variables & Router Modes
+You can configure your settings in [`.env.local`](.env.local) (automatically ignored by Git):
 ```bash
-# Option A: In .env.local (recommended for local development)
-echo 'OPENAI_API_KEY=sk-proj-your-key-here' >> .env.local
+# OpenAI Key
+OPENAI_API_KEY=sk-proj-your-key-here
 
-# Option B: Direct shell export
-export OPENAI_API_KEY="sk-proj-your-key-here"
+# Router Mode: 'openai' (default), 'vllm', or 'hybrid'
+EVAL_ROUTER_MODE=openai
+
+# Optional vLLM / RunPod Serverless configuration
+# VLLM_BASE_URL=https://api.runpod.ai/v2/YOUR_ENDPOINT_ID/openai/v1
+# VLLM_API_KEY=your_runpod_key
+# VLLM_MODEL=meta-llama/Meta-Llama-3.1-8B-Instruct
+# VLLM_TIMEOUT=15.0
 ```
 
 ---
 
-## 2. Running Local Evaluations
+## 2. Running Local Evaluations & Tests
 
-### 2.1 Standard Execution
-Run the full evaluation gate against the golden benchmark:
+### 2.1 Running the Unit Test Suite
+Verify that all router adapters, parsers, and circuit breakers function properly:
+```bash
+python -m unittest discover tests
+```
+
+### 2.2 Standard Evaluation Execution
+Run the full evaluation gate against the golden benchmark using the configured router:
 ```bash
 python scripts/eval_gate.py
 ```
 
-### 2.2 Verifying Artifacts
-Following execution, check the generated artifacts:
-* **Evaluation Summary:** [artifacts/summary.md](artifacts/summary.md)
-* **Severe Misalignments:** [artifacts/severe_misalignments.jsonl](artifacts/severe_misalignments.jsonl) (empty if all predictions are within $\pm 1$).
+### 2.3 Testing Hybrid Fallback Mode
+To test automatic fallback from open-weights to OpenAI when the primary endpoint is unavailable:
+```bash
+EVAL_ROUTER_MODE=hybrid python scripts/eval_gate.py
+```
 
-### 2.3 Simulating CI Locally
+### 2.4 Verifying Artifacts
+Following execution, check the generated artifacts:
+* **Evaluation Summary:** [artifacts/summary.md](artifacts/summary.md) (includes router backend, average latency, and provider attribution)
+* **Severe Misalignments:** [artifacts/severe_misalignments.jsonl](artifacts/severe_misalignments.jsonl) (empty if all predictions are within $\pm 1$)
+
+### 2.5 Simulating CI Locally
 To verify that the script properly sets exit codes for CI:
 ```bash
 python scripts/eval_gate.py

@@ -1,30 +1,24 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 import sys
+import time
 from typing import Any, Optional
 
 from aiolimiter import AsyncLimiter
 import numpy as np
-from openai import (
-    APIConnectionError,
-    APITimeoutError,
-    AsyncOpenAI,
-    InternalServerError,
-    RateLimitError,
-)
 import pandas as pd
-from pydantic import BaseModel, Field
 from sklearn.metrics import cohen_kappa_score, confusion_matrix
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_random_exponential,
-)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.router import BaseJudgeClient, JudgeOutput, create_judge_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("eval_gate")
@@ -42,8 +36,6 @@ QWK_MIN_THRESHOLD = 0.70
 ADJACENT_ACC_THRESHOLD = 0.90
 MAX_LENIENCE_DRIFT = 0.35
 MAX_ALLOWED_SEVERE_ERRORS = 0  # Fail build if any prediction differs by >= 2 points
-
-client: Optional[AsyncOpenAI] = None
 
 
 def _load_env_file() -> None:
@@ -63,64 +55,10 @@ def _load_env_file() -> None:
                 logger.warning(f"Could not read {filename}: {err}")
 
 
-def get_client() -> AsyncOpenAI:
-    global client
-    if client is None:
-        _load_env_file()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            logger.error("OPENAI_API_KEY environment variable is missing. Set it before running.")
-            sys.exit(1)
-        client = AsyncOpenAI(api_key=api_key)
-    return client
-
-
-# ---------------------------------------------------------------------------
-# Output Schema
-# ---------------------------------------------------------------------------
-class JudgeOutput(BaseModel):
-    chain_of_thought: str = Field(..., description="Step-by-step reasoning against rubric")
-    score: int = Field(..., ge=1, le=5, description="Integer rating from 1 to 5")
-
-
-RETRYABLE_EXCEPTIONS = (
-    RateLimitError,
-    APIConnectionError,
-    APITimeoutError,
-    InternalServerError,
-    json.JSONDecodeError,
-)
-
-
-@retry(
-    retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
-    wait=wait_random_exponential(min=1, max=30),
-    stop=stop_after_attempt(5),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
-async def _invoke_judge(prompt_text: str) -> JudgeOutput:
-    active_client = get_client()
-    completion = await active_client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": "You are a strict, objective evaluation judge."},
-            {"role": "user", "content": prompt_text},
-        ],
-        response_format=JudgeOutput,
-    )
-    message = completion.choices[0].message
-    if getattr(message, "refusal", None):
-        raise ValueError(f"Model refused request: {message.refusal}")
-    if message.parsed is None:
-        raise ValueError("Failed to parse structured output from model response")
-    return message.parsed
-
-
 async def evaluate_sample(
     item: dict[str, Any],
     template: str,
+    router: BaseJudgeClient,
     semaphore: asyncio.Semaphore,
     limiter: AsyncLimiter,
 ) -> dict[str, Any]:
@@ -133,7 +71,9 @@ async def evaluate_sample(
     async with semaphore:
         async with limiter:
             try:
-                res = await _invoke_judge(formatted_prompt)
+                t0 = time.perf_counter()
+                res, provider = await router.evaluate(formatted_prompt)
+                latency_ms = int((time.perf_counter() - t0) * 1000)
                 return {
                     "id": item.get("id"),
                     "prompt": item["prompt"],
@@ -142,6 +82,8 @@ async def evaluate_sample(
                     "human_score": int(item["human_score"]),
                     "llm_score": int(res.score),
                     "reasoning": res.chain_of_thought,
+                    "provider": provider,
+                    "latency_ms": latency_ms,
                     "status": "SUCCESS",
                 }
             except Exception as e:
@@ -154,6 +96,8 @@ async def evaluate_sample(
                     "human_score": int(item["human_score"]),
                     "llm_score": None,
                     "reasoning": str(e),
+                    "provider": getattr(router, "name", "unknown"),
+                    "latency_ms": None,
                     "status": "FAILED",
                 }
 
@@ -167,7 +111,12 @@ async def main():
         logger.error(f"Prompt template missing at {PROMPT_TEMPLATE_PATH}")
         sys.exit(1)
 
-    get_client()
+    _load_env_file()
+    try:
+        router = create_judge_router()
+    except Exception as err:
+        logger.error(f"Failed to initialize judge router: {err}")
+        sys.exit(1)
 
     # Initialized inside the running event loop to support Python 3.9
     semaphore = asyncio.Semaphore(5)
@@ -177,8 +126,8 @@ async def main():
     df_raw = pd.read_json(GOLDEN_SET_PATH, lines=True)
     records = df_raw.to_dict(orient="records")
 
-    logger.info(f"Dispatching async evaluation for {len(records)} test samples...")
-    tasks = [evaluate_sample(r, template, semaphore, limiter) for r in records]
+    logger.info(f"Dispatching async evaluation for {len(records)} test samples using router '{router.name}'...")
+    tasks = [evaluate_sample(r, template, router, semaphore, limiter) for r in records]
     results = await asyncio.gather(*tasks)
 
     df = pd.DataFrame(results)
@@ -220,6 +169,10 @@ async def main():
     drift = float(np.mean(llm_y) - np.mean(human_y))
     cm = confusion_matrix(human_y, llm_y, labels=categories)
 
+    avg_latency = int(valid_df["latency_ms"].mean()) if "latency_ms" in valid_df and valid_df["latency_ms"].notna().any() else 0
+    provider_counts = valid_df["provider"].value_counts().to_dict()
+    provider_summary = ", ".join(f"`{k}`: {v}" for k, v in provider_counts.items())
+
     # Threshold checks
     failures = []
     if qwk < QWK_MIN_THRESHOLD:
@@ -236,6 +189,9 @@ async def main():
     summary_md = f"""## ⚖️ LLM Judge CI Regression Gate
 
 **Status:** `{'🔴 ' + status if status == 'FAILED' else '🟢 ' + status}`
+**Router Backend:** `{router.name}`
+**Average Latency:** `{avg_latency} ms`
+**Engine Providers:** {provider_summary}
 
 | Metric | Measured | Threshold | Result |
 | :--- | :--- | :--- | :--- |

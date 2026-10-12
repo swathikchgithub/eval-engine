@@ -207,24 +207,65 @@ if (existingComment) {
 
 ---
 
-## 7. Upcoming Extension: Layer 3 Hybrid Router Spec
+## 7. Multi-Backend Hybrid Router Architecture (Layer 3 — Implemented)
 
-For Layer 3, the judge client will be refactored into a provider-agnostic router:
+The evaluation judge uses a pluggable router abstraction in [`scripts/router.py`](../scripts/router.py):
 
 ```python
 class BaseJudgeClient(ABC):
+    name: str
+
     @abstractmethod
-    async def evaluate(self, prompt: str) -> JudgeOutput: ...
+    async def evaluate(self, prompt_text: str) -> tuple[JudgeOutput, str]:
+        """Evaluates a prompt and returns (JudgeOutput, provider_identifier)."""
+        pass
+```
 
-class OpenAIJudgeClient(BaseJudgeClient):
-    # gpt-4o-mini implementation via AsyncOpenAI
-    ...
+### 7.1 Router Implementations
+1. **`OpenAIJudgeClient`**:
+   - Uses `AsyncOpenAI.beta.chat.completions.parse` with Pydantic `JudgeOutput`.
+   - Employs `tenacity` exponential backoff across retryable exceptions.
+2. **`VLLMJudgeClient`**:
+   - Uses `AsyncOpenAI` pointing to OpenAI-compatible base URLs (`VLLM_BASE_URL`).
+   - Targets open-weights models (`meta-llama/Meta-Llama-3.1-8B-Instruct`).
+   - Robust `_extract_json_payload` handles raw JSON, markdown-fenced code blocks, and bare text.
+   - Enforces per-request timeouts via `asyncio.wait_for(timeout=VLLM_TIMEOUT)`.
+3. **`HybridJudgeRouter`**:
+   - Wraps a `primary` (e.g., `VLLMJudgeClient`) and `secondary` (e.g., `OpenAIJudgeClient`).
+   - Tracks consecutive failures. If primary encounters 3 consecutive failures, the **circuit breaker trips OPEN**, automatically routing subsequent evaluations directly to the secondary to prevent cascading timeouts.
+   - Tags returned provider identifier with `[fallback]` for auditability.
 
-class VLLMJudgeClient(BaseJudgeClient):
-    # Llama-3.1-8B-Instruct on RunPod Serverless / vLLM
-    ...
+### 7.2 Configuration Environment Variables
+* `EVAL_ROUTER_MODE`: `"openai"` (default), `"vllm"`, or `"hybrid"`
+* `VLLM_BASE_URL`: OpenAI-compatible endpoint (e.g., `https://api.runpod.ai/v2/.../openai/v1`)
+* `VLLM_API_KEY`: Endpoint authorization token
+* `VLLM_MODEL`: Target model identifier
+* `VLLM_TIMEOUT`: Maximum seconds before triggering fallback (default: 12.0s in hybrid mode)
 
-class HybridRouter(BaseJudgeClient):
-    # Primary: vLLM -> Fallback: OpenAI on timeout / error
-    ...
+---
+
+## 8. Upcoming Extension: Layer 4 Production Shadow Eval (Vercel Edge)
+
+For Layer 4, the evaluation pipeline will be integrated into live inference serving without introducing user-facing latency:
+
+```typescript
+// Edge Route Handler (Next.js / Vercel Edge Runtime)
+import { waitUntil } from '@vercel/functions';
+
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+  const response = await generateCandidateResponse(prompt);
+
+  // Return response immediately to user
+  // Non-blocking shadow evaluation executed in background
+  waitUntil(
+    dispatchShadowAudit({
+      prompt,
+      response,
+      rubricId: 'prod_standard_v1',
+    })
+  );
+
+  return Response.json({ response });
+}
 ```
