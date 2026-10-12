@@ -172,14 +172,20 @@ echo 'OPENAI_API_KEY=your-openai-api-key' >> .env.local
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-### 3. Run the Evaluation Gate & Unit Tests
+### 3. Run the Evaluation Gate & Full Test Suite
 
 ```bash
 # Run the CI regression gate against the golden benchmark
 python scripts/eval_gate.py
 
-# Run all 18 unit tests (router adapters, fallback, circuit breaker, shadow sampler)
+# Run all 28 unit and end-to-end tests
 python -m unittest discover tests
+
+# Or run specific test suites:
+python -m unittest tests/test_eval_metrics.py  # Statistical formulas & kappa math
+python -m unittest tests/test_router.py        # Model adapters & circuit breaker
+python -m unittest tests/test_shadow_eval.py   # Out-of-band worker & sampler
+python -m unittest tests/test_e2e_api.py       # Live HTTP E2E tests against Edge API
 
 # Simulate Python async queue shadow worker
 python scripts/shadow_eval.py
@@ -257,6 +263,8 @@ eval-engine/
 │   ├── api/
 │   │   ├── chat/route.ts          # Vercel Edge API route with waitUntil shadow evaluation
 │   │   └── metrics/route.ts       # Live metrics & benchmark endpoint
+│   ├── components/
+│   │   └── WorkflowModal.tsx      # Interactive 5-tab system workflow & guide modal
 │   ├── globals.css                # Dark-mode dashboard styling
 │   ├── layout.tsx                 # Root dashboard layout
 │   └── page.tsx                   # Interactive dashboard (sandbox, confusion matrix, golden explorer)
@@ -279,6 +287,8 @@ eval-engine/
 │   ├── router.py                  # Multi-backend judge router (OpenAI, vLLM, Hybrid)
 │   └── shadow_eval.py             # Asynchronous queue worker & ShadowSampler service
 ├── tests/
+│   ├── test_e2e_api.py            # Live End-to-End HTTP tests against /api/chat and /api/metrics
+│   ├── test_eval_metrics.py       # Unit tests for QWK, adjacent agreement, and drift math
 │   ├── test_router.py             # Router unit tests & circuit breaker test suite
 │   └── test_shadow_eval.py        # Shadow sampler & async worker test suite
 ├── .env.local                     # Local secrets configuration (git-ignored)
@@ -303,8 +313,8 @@ eval-engine/
 * **Layer 4: Production Shadow Evaluation & Vercel Edge** *(Completed)*:
   * Edge shadow evaluations via `@vercel/functions` `waitUntil` (`app/api/chat/route.ts`).
   * Latency-isolated production sampling (`ShadowSampler`: keyword triggers + 10% uniform rate).
-  * Interactive Next.js 14 dark-mode dashboard (`app/page.tsx`) with live evaluation sandbox and confusion matrix.
-  * Unit test suite expanded to 18 passing tests (`tests/test_shadow_eval.py`).
+  * Interactive Next.js 14 dark-mode dashboard (`app/page.tsx`) with live evaluation sandbox, confusion matrix, and interactive workflow guide modal (`WorkflowModal.tsx`).
+  * Test suite expanded to 28 passing unit & E2E tests (`tests/test_shadow_eval.py`, `tests/test_eval_metrics.py`, `tests/test_e2e_api.py`).
 * **Layer 5: Continuous Calibration & Live Observability** *(Up Next)*:
   * Longitudinal drift monitoring dashboard.
   * Automated alerts on distribution shift and dynamic golden set expansion from severe failure slices.

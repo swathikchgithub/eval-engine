@@ -102,6 +102,37 @@ async def evaluate_sample(
                 }
 
 
+def compute_evaluation_metrics(
+    human_scores: list[int] | np.ndarray,
+    llm_scores: list[int] | np.ndarray,
+    categories: list[int] | None = None,
+) -> dict[str, Any]:
+    """Computes QWK, adjacent agreement, exact match, lenience drift, and confusion matrix."""
+    if categories is None:
+        categories = [1, 2, 3, 4, 5]
+
+    human_y = np.array(human_scores, dtype=int)
+    llm_y = np.array(llm_scores, dtype=int)
+    deltas = np.abs(llm_y - human_y)
+
+    qwk = cohen_kappa_score(human_y, llm_y, labels=categories, weights="quadratic")
+    qwk = float(qwk) if not np.isnan(qwk) else (1.0 if np.array_equal(human_y, llm_y) else 0.0)
+    adj_acc = float(np.mean(deltas <= 1))
+    exact_acc = float(np.mean(deltas == 0))
+    drift = float(np.mean(llm_y) - np.mean(human_y))
+    num_severe = int(np.sum(deltas >= 2))
+    cm = confusion_matrix(human_y, llm_y, labels=categories)
+
+    return {
+        "qwk": qwk,
+        "adjacent_agreement": adj_acc,
+        "exact_match": exact_acc,
+        "lenience_drift": drift,
+        "severe_misalignments": num_severe,
+        "confusion_matrix": cm,
+    }
+
+
 async def main():
     if not GOLDEN_SET_PATH.exists():
         logger.error(f"Dataset missing at {GOLDEN_SET_PATH}")
@@ -157,17 +188,16 @@ async def main():
     else:
         MISALIGNMENTS_FILE.write_text("")
 
-    # Statistical metrics
-    human_y = valid_df["human_score"].values
-    llm_y = valid_df["llm_score"].values
-    categories = [1, 2, 3, 4, 5]
-
-    qwk = cohen_kappa_score(human_y, llm_y, labels=categories, weights="quadratic")
-    qwk = float(qwk) if not np.isnan(qwk) else (1.0 if np.array_equal(human_y, llm_y) else 0.0)
-    adj_acc = float(np.mean(valid_df["delta"] <= 1))
-    exact_acc = float(np.mean(valid_df["delta"] == 0))
-    drift = float(np.mean(llm_y) - np.mean(human_y))
-    cm = confusion_matrix(human_y, llm_y, labels=categories)
+    # Statistical metrics via pure calculation function
+    metrics = compute_evaluation_metrics(
+        valid_df["human_score"].values,
+        valid_df["llm_score"].values,
+    )
+    qwk = metrics["qwk"]
+    adj_acc = metrics["adjacent_agreement"]
+    exact_acc = metrics["exact_match"]
+    drift = metrics["lenience_drift"]
+    cm = metrics["confusion_matrix"]
 
     avg_latency = int(valid_df["latency_ms"].mean()) if "latency_ms" in valid_df and valid_df["latency_ms"].notna().any() else 0
     provider_counts = valid_df["provider"].value_counts().to_dict()
