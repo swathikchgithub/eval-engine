@@ -12,7 +12,7 @@
                                                                                                 |
                                                                                                 v
 [Layer 5: Continuous Calibration & Drift]  <---  [Layer 4: Production Shadow Eval (Edge)] <-----+
-                 📋 BACKLOG                                      ⏳ UP NEXT
+                 ⏳ UP NEXT                                      ✅ COMPLETED
 ```
 
 ---
@@ -20,12 +20,12 @@
 ## 📊 Sprint Breakdown & Status
 
 | Layer | Focus Area | Status | Deliverables | Verification Status |
-| :--- | :--- | :---: | :--- | :---: |
+| :--- | :--- | :---: | :--- | :--- |
 | **Layer 1** | **Core Eval Harness** | ✅ **COMPLETED** | • [`prompts/judge_rubric.txt`](prompts/judge_rubric.txt)<br>• [`data/eval_golden_set.jsonl`](data/eval_golden_set.jsonl)<br>• [`scripts/eval_gate.py`](scripts/eval_gate.py) | Verified: QWK (0.953), Adj Acc (100%), Drift (-0.30), Python 3.9 event loop safety |
 | **Layer 2** | **CI/CD Regression Gate** | ✅ **COMPLETED** | • [`.github/workflows/eval-gate.yml`](.github/workflows/eval-gate.yml)<br>• Path filtering (`prompts/**`, `data/**`, `scripts/**`, `tests/**`)<br>• Sticky PR comments (`actions/github-script@v7`)<br>• Artifact upload (`severe_misalignments.jsonl`, `summary.md`) | Verified: Workflow syntax validated, CI runs unit tests + eval gate |
 | **Layer 3** | **Hybrid Routing & Open Weights** | ✅ **COMPLETED** | • [`scripts/router.py`](scripts/router.py) (OpenAI, vLLM/RunPod, HybridRouter)<br>• 3-failure circuit breaker tripping & fallback<br>• [`tests/test_router.py`](tests/test_router.py) unit test suite<br>• Latency tracking & provider breakdown | Verified: 13 unit tests passing, live execution verified |
-| **Layer 4** | **Production Shadow Eval (Vercel)** | ⏳ **UP NEXT** | • Edge shadow evaluation via `waitUntil` (Next.js / Vercel Edge)<br>• Latency-isolated background queue<br>• Sampling strategies (10% random + high-uncertainty slicing) | Queued |
-| **Layer 5** | **Continuous Calibration & Observability** | 📋 **BACKLOG** | • Longitudinal drift monitoring dashboard<br>• Metric degradation alerting<br>• Dynamic golden set expansion pipeline | Backlog |
+| **Layer 4** | **Production Shadow Eval (Vercel)** | ✅ **COMPLETED** | • [`app/api/chat/route.ts`](app/api/chat/route.ts) (Edge runtime + `waitUntil`)<br>• [`scripts/shadow_eval.py`](scripts/shadow_eval.py) (`ShadowSampler` + background worker queue)<br>• [`tests/test_shadow_eval.py`](tests/test_shadow_eval.py) (5 unit tests)<br>• [`app/page.tsx`](app/page.tsx) & [`app/api/metrics/route.ts`](app/api/metrics/route.ts) (Next.js 14 dashboard) | Verified: 18 unit tests passing, `npm run build` succeeds, zero-latency enqueue (<10ms), telemetry logged to `artifacts/shadow_eval_log.jsonl` |
+| **Layer 5** | **Continuous Calibration & Observability** | ⏳ **UP NEXT** | • Longitudinal drift monitoring dashboard<br>• Metric degradation alerting on rolling distributions<br>• Dynamic golden set expansion from severe failure slices | Queued |
 
 ---
 
@@ -41,11 +41,11 @@
 
 ---
 
-## 🎯 Layer 4 Next Steps (Production Shadow Evaluation & Vercel Edge)
+## 🎯 Layer 5 Next Steps (Continuous Calibration & Longitudinal Drift)
 
-1. **Vercel Edge Integration**: Scaffold lightweight API route with `@vercel/functions` using `waitUntil`.
-2. **Zero-Latency Telemetry**: Return candidate LLM generation immediately while auditing in the background.
-3. **Shadow Ingestion Pipeline**: Asynchronously forward production traffic slices to the Layer 3 Hybrid Router.
+1. **Longitudinal Rolling Calibration**: Implement rolling window calculation for QWK and lenience drift over production shadow samples.
+2. **Distribution Shift Alerting**: Statistical hypothesis testing / divergence checks for score skew.
+3. **Automated Benchmark Slicing**: Pipeline to automatically ingest and flag production failure slices ($|\Delta| \ge 2$) for golden set expansion.
 
 ---
 

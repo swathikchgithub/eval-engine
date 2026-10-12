@@ -58,8 +58,8 @@ Every PR must satisfy the following statistical criteria against [data/eval_gold
 Layer 1: Core Eval Harness (Done)
     └── Layer 2: CI/CD Regression Gate (Done)
             └── Layer 3: Hybrid Routing & Open-Weights (Done)
-                    └── Layer 4: Production Shadow Eval (Up Next)
-                            └── Layer 5: Continuous Calibration & Observability (Backlog)
+                    └── Layer 4: Production Shadow Eval (Done)
+                            └── Layer 5: Continuous Calibration & Observability (Up Next)
 ```
 
 ### Layer 1: Core Evaluation Harness *(Status: Completed)*
@@ -82,12 +82,15 @@ Layer 1: Core Eval Harness (Done)
 * Latency tracking (`latency_ms`) and per-sample provider attribution.
 * Comprehensive unit test suite ([tests/test_router.py](tests/test_router.py)) covering all modes and circuit breakers.
 
-### Layer 4: Production Shadow Evaluation *(Status: Up Next)*
-* Edge-isolated shadow evaluation using `waitUntil` (Vercel / Next.js Edge runtime).
-* Asynchronous queue processing for real user inference auditing without added latency.
-* Dynamic traffic sampling (10% random + high-uncertainty slicing).
+### Layer 4: Production Shadow Evaluation *(Status: Completed)*
+* Edge-isolated shadow evaluation API ([app/api/chat/route.ts](app/api/chat/route.ts)) using `@vercel/functions` `waitUntil` on Next.js Edge Runtime.
+* Zero-latency client response returning candidate outputs in <100ms while evaluating in the background.
+* Configurable sampling strategy (`ShadowSampler` in [scripts/shadow_eval.py](scripts/shadow_eval.py)) with keyword triggers and random rates.
+* Interactive production web dashboard ([app/page.tsx](app/page.tsx)) for live sandbox testing, confusion matrix exploration, and benchmark auditing.
+* Telemetry audit logger writing to `artifacts/shadow_eval_log.jsonl`.
+* Full unit test suite ([tests/test_shadow_eval.py](tests/test_shadow_eval.py)).
 
-### Layer 5: Continuous Calibration & Observability *(Status: Backlog)*
+### Layer 5: Continuous Calibration & Observability *(Status: Up Next)*
 * Longitudinal metric tracking dashboard.
 * Automated alerting on statistical distribution shifts and lenience drift.
 * Automated golden set curation from production failure slices.

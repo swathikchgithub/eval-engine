@@ -2,10 +2,10 @@
 
 ## LLM Evaluation Engine Architecture & Test Specifications
 
-* **Document Version:** 1.0.0  
-* **Status:** Active / Layer 1 & 2 Completed  
-* **Runtime:** Python 3.9+ (`asyncio`, `aiolimiter`, `tenacity`, `scikit-learn`, `pydantic`)  
-* **Last Updated:** 2026-10-10  
+* **Document Version:** 1.1.0  
+* **Status:** Active / Layers 1, 2, 3 & 4 Completed  
+* **Runtime:** Python 3.9+ (`asyncio`, `aiolimiter`, `tenacity`, `scikit-learn`, `pydantic`) + Next.js 14 (Vercel Edge Runtime)  
+* **Last Updated:** 2026-10-12  
 
 ---
 
@@ -244,28 +244,104 @@ class BaseJudgeClient(ABC):
 
 ---
 
-## 8. Upcoming Extension: Layer 4 Production Shadow Eval (Vercel Edge)
+## 8. Layer 4: Production Shadow Evaluation Architecture (Implemented)
 
-For Layer 4, the evaluation pipeline will be integrated into live inference serving without introducing user-facing latency:
+Layer 4 integrates evaluation into live inference serving without introducing user-facing latency, running out-of-band via edge execution and asynchronous queue workers.
+
+```
+                    [Client Request (Inference)]
+                                │
+                                ▼
+         ┌──────────────────────────────────────────────┐
+         │     Next.js / Vercel Edge Route Handler      │
+         │             (app/api/chat/route.ts)          │
+         │   • runtime = 'edge'                         │
+         │   • Fast candidate response generation       │
+         └──────────────────────┬───────────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        │                                               │
+        ▼ (Immediate Response)                          ▼ (Non-blocking Out-of-band)
+[Client / User: <100ms]                     waitUntil(async () => {
+                                                • Check ShadowSampler
+                                                • If sampled: Call Judge Router
+                                                • Append to Audit Log
+                                            })
+```
+
+### 8.1 Vercel Edge `waitUntil` Integration (`app/api/chat/route.ts`)
+The Edge API route leverages `@vercel/functions` `waitUntil` under `export const runtime = 'edge'`.
+- The user prompt is processed, and a candidate response is generated and returned immediately to the client in `<100ms`.
+- `waitUntil` keeps the Edge worker invocation alive in the background to execute shadow evaluation:
+  1. Inspects sampling conditions (`ShadowSampler`).
+  2. If selected, calls `HybridJudgeRouter` or OpenAI judge with the rubric template.
+  3. Records timestamp, candidate response, judge score (1–5), reasoning, provider attribution, and latency.
 
 ```typescript
-// Edge Route Handler (Next.js / Vercel Edge Runtime)
 import { waitUntil } from '@vercel/functions';
 
-export async function POST(req: Request) {
-  const { prompt } = await req.json();
-  const response = await generateCandidateResponse(prompt);
+export const runtime = 'edge';
 
-  // Return response immediately to user
-  // Non-blocking shadow evaluation executed in background
+export async function POST(req: Request) {
+  const { prompt, context } = await req.json();
+  const startTime = Date.now();
+  
+  // 1. Generate candidate response immediately
+  const candidateResponse = await generateCandidate(prompt, context);
+  const userLatency = Date.now() - startTime;
+
+  // 2. Schedule non-blocking shadow evaluation
   waitUntil(
-    dispatchShadowAudit({
+    executeShadowAudit({
+      requestId: crypto.randomUUID(),
       prompt,
-      response,
-      rubricId: 'prod_standard_v1',
+      context,
+      candidateResponse,
+      userLatency,
     })
   );
 
-  return Response.json({ response });
+  // 3. Return candidate response with zero added latency
+  return Response.json({
+    response: candidateResponse,
+    meta: { userLatencyMs: userLatency, shadowAudited: true }
+  });
 }
 ```
+
+### 8.2 Production Sampling Strategy (`ShadowSampler`)
+To minimize evaluation compute costs while maximizing regression detection, `ShadowSampler` in [`scripts/shadow_eval.py`](../scripts/shadow_eval.py) implements a hybrid policy:
+1. **Keyword Triggers (High Uncertainty / High Risk):** Evaluates 100% of requests containing policy or sensitive keywords (e.g. `policy`, `refund`, `return`, `legal`, `security`, `cancel`).
+2. **Uniform Random Sampling:** Evaluates a configurable percentage of general traffic (e.g. 10% sample rate, configurable via `sample_rate=0.10`).
+
+### 8.3 Python Asynchronous Shadow Worker Service (`scripts/shadow_eval.py`)
+For environments using Python backends (FastAPI/Tornado), the shadow engine provides an in-process queue worker:
+- **`asyncio.Queue` Decoupling:** Ingestion enqueues audit jobs in `<5ms`.
+- **Worker Pool:** `start_workers(num_workers=2)` consumes jobs concurrently in the background.
+- **Graceful Shutdown:** `drain_and_stop()` flushes pending evaluations upon SIGTERM/SIGINT.
+- **Audit Logging:** Evaluated samples append to `artifacts/shadow_eval_log.jsonl`.
+
+### 8.4 Interactive Web Dashboard & Metrics API
+- **Live Dashboard (`app/page.tsx`):** A responsive, dark-mode Next.js UI featuring:
+  - **Live Evaluation Sandbox:** Allows entering arbitrary prompts, contexts, and candidate responses with instant evaluation and reasoning breakdown.
+  - **Regression Metrics Cards:** Real-time display of QWK, Adjacent Agreement, Exact Match, and Lenience Drift.
+  - **5x5 Interactive Confusion Matrix:** Visual heatmap of human vs judge score distribution.
+  - **Golden Benchmark Explorer:** Filterable dataset inspector with score chips and context viewer.
+- **Metrics API (`app/api/metrics/route.ts`):** Serves current gate metrics, golden set items, and recent shadow evaluation logs.
+
+### 8.5 Unit Test Verification (`tests/test_shadow_eval.py`)
+5 dedicated unit tests validate:
+- Keyword sampling trigger detection.
+- Uniform random sampling behavior.
+- Non-blocking enqueuing (<10ms).
+- End-to-end background evaluation and log persistence.
+- Graceful worker shutdown.
+
+---
+
+## 9. Upcoming Extension: Layer 5 Continuous Calibration & Longitudinal Drift
+
+For Layer 5, the evaluation system will continuously monitor production telemetry:
+1. **Longitudinal Metric Tracking:** Rolling window QWK and lenience drift calculated over daily/weekly production shadow samples.
+2. **Distribution Shift Alerts:** Statistical detection of score skew (e.g., sudden increase in 1s or 2s).
+3. **Dynamic Golden Set Curation:** Automatic slicing of production failures ($|\Delta| \ge 2$) for human annotation and automated inclusion in `data/eval_golden_set.jsonl`.

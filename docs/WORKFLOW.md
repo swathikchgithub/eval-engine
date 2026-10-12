@@ -2,9 +2,9 @@
 
 ## Operational Guide & Documentation Maintenance Protocol
 
-* **Document Version:** 1.0.0  
+* **Document Version:** 1.1.0  
 * **Status:** Active  
-* **Last Updated:** 2026-10-10  
+* **Last Updated:** 2026-10-12  
 
 ---
 
@@ -72,11 +72,31 @@ Following execution, check the generated artifacts:
 * **Evaluation Summary:** [artifacts/summary.md](artifacts/summary.md) (includes router backend, average latency, and provider attribution)
 * **Severe Misalignments:** [artifacts/severe_misalignments.jsonl](artifacts/severe_misalignments.jsonl) (empty if all predictions are within $\pm 1$)
 
-### 2.5 Simulating CI Locally
-To verify that the script properly sets exit codes for CI:
+### 2.6 Running Shadow Evaluation (Python Queue Worker)
+Run the asynchronous zero-latency shadow evaluation service simulation:
 ```bash
-python scripts/eval_gate.py
-echo "Exit code: $?"  # 0 indicates PASSED, 1 indicates REGRESSION FAILED
+python scripts/shadow_eval.py
+```
+This demonstrates instant client response delivery (<100ms) with background queue processing and writes evaluated samples to `artifacts/shadow_eval_log.jsonl`.
+
+### 2.7 Running the Next.js Production Dashboard Locally
+Launch the real-time evaluation dashboard and edge sandbox:
+```bash
+# Install node dependencies (if not already installed)
+npm install
+
+# Start local Next.js development server
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to access:
+- **Interactive Evaluation Sandbox:** Test custom prompt/context/response triplets with real-time judge scoring.
+- **Metrics Health Dashboard:** View active QWK, Adjacent Agreement, Lenience Drift, and exact matches.
+- **5x5 Confusion Matrix Heatmap:** Live visual inspection of human vs judge agreement.
+- **Golden Benchmark Explorer:** Audit reference test cases.
+
+To verify a production build:
+```bash
+npm run build
 ```
 
 ---
@@ -114,6 +134,7 @@ The CI workflow ([.github/workflows/eval-gate.yml](.github/workflows/eval-gate.y
 * `prompts/**`
 * `data/**`
 * `scripts/**`
+* `tests/**`
 * `requirements.txt`
 * `.github/workflows/eval-gate.yml`
 
@@ -131,7 +152,29 @@ To enable CI execution in your GitHub repository:
 
 ---
 
-## 5. Mandatory Documentation Update Protocol
+## 5. Deploying to Vercel (Edge Runtime & Production Dashboard)
+
+The application is structured as a standard Next.js 14 project ready for one-click deployment on [Vercel](https://vercel.com):
+
+### 5.1 Connecting the Repository
+1. Navigate to your [Vercel Dashboard](https://vercel.com/new).
+2. Click **Import Repository** and select `swathikchgithub/eval-engine`.
+3. Keep the default Framework Preset (`Next.js`).
+
+### 5.2 Configuring Environment Variables in Vercel
+Before clicking Deploy, add your project environment variables in the Vercel project configuration:
+* `OPENAI_API_KEY`: Your OpenAI API key (required for Edge shadow audits and live sandbox).
+* `EVAL_ROUTER_MODE`: `openai` (or `hybrid` / `vllm`).
+* *(Optional)* `VLLM_BASE_URL`, `VLLM_API_KEY`, `VLLM_MODEL`: For RunPod or self-hosted open-weights routing.
+
+### 5.3 Edge Function Execution
+* The route `/api/chat` automatically runs on Vercel's global Edge network (`runtime = 'edge'`).
+* Responses return to callers in under 100ms.
+* Shadow evaluations run asynchronously in the background via `@vercel/functions` `waitUntil`.
+
+---
+
+## 6. Mandatory Documentation Update Protocol
 
 To ensure documentation never drifts from code, follow this protocol whenever implementing a new layer or modifying system behavior:
 

@@ -17,13 +17,16 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Virtual Environments
+# Virtual Environments & Dependencies
 venv/
 .venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+node_modules/
+.next/
+out/
 
 # Dynamic Evaluation Artifacts
 artifacts/*.jsonl

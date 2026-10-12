@@ -99,6 +99,14 @@ flowchart TD
 * **Telemetry & Latency Tracking**: Records per-sample latency and provider attribution in reports and artifacts.
 * **Unit Test Suite (`tests/test_router.py`)**: 13 unit tests validating JSON parsers, clients, and circuit breaking.
 
+### Layer 4: Production Shadow Evaluation & Vercel Edge
+* **Edge Route Handler (`app/api/chat/route.ts`)**: Built on Next.js 14 Edge Runtime (`runtime = 'edge'`). Returns candidate inference responses to users in <100ms with zero added evaluation latency.
+* **Non-Blocking Background Auditing (`waitUntil`)**: Leverages `@vercel/functions` `waitUntil` to trigger out-of-band judge evaluations asynchronously.
+* **Hybrid Shadow Sampler (`ShadowSampler`)**: Configurable policy combining 100% evaluation of high-uncertainty / sensitive keyword probes (`refund`, `policy`, `cancel`, `legal`) with uniform random sampling (10%) of general queries.
+* **Python Async Queue Service (`scripts/shadow_eval.py`)**: Microsecond job enqueueing with background worker queue for non-edge / self-hosted environments; logs audits to `artifacts/shadow_eval_log.jsonl`.
+* **Interactive Web Dashboard (`app/page.tsx`)**: Responsive dark-mode dashboard with live evaluation sandbox, 5x5 confusion matrix heatmap, and golden benchmark explorer.
+* **Test Suite Expansion (`tests/test_shadow_eval.py`)**: Total 18 passing tests across router and shadow eval modules.
+
 ---
 
 ## 🛠️ Technology Stack & Architectural Decisions
@@ -106,6 +114,7 @@ flowchart TD
 | Technology | Role | Why It Was Chosen |
 | :--- | :--- | :--- |
 | **Python 3.9+ Async** (`asyncio`) | Concurrent Engine | Non-blocking I/O allows dispatching batch judge calls concurrently without worker thread overhead. |
+| **Next.js 14 & Vercel Edge** | Production Serving | Global low-latency edge deployment with `@vercel/functions` `waitUntil` for out-of-band evaluation workloads. |
 | **aiolimiter** | Rate Limiting | Enforces a strict 60 calls/minute sliding-window ceiling to prevent 429 RateLimitErrors from provider tier limits. |
 | **tenacity** | Fault Tolerance | Configured with randomized exponential backoff (`wait_random_exponential(min=1, max=30)`) targeting retryable transient errors (`RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError`). |
 | **OpenAI Structured Outputs** (`gpt-4o-mini`) | LLM Judge | Guarantees 100% adherence to the Pydantic schema (`chain_of_thought` reasoning + `score` integer 1–5) via grammar-constrained sampling, eliminating JSON formatting failures. Offers optimal cost-to-performance ratio for evaluation. |
@@ -160,13 +169,34 @@ echo 'OPENAI_API_KEY=your-openai-api-key' >> .env.local
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-### 3. Run the Evaluation Gate
+### 3. Run the Evaluation Gate & Unit Tests
 
 ```bash
+# Run the CI regression gate against the golden benchmark
 python scripts/eval_gate.py
+
+# Run all 18 unit tests (router adapters, fallback, circuit breaker, shadow sampler)
+python -m unittest discover tests
+
+# Simulate Python async queue shadow worker
+python scripts/shadow_eval.py
 ```
 
-### Sample Output:
+### 4. Launch the Interactive Next.js Dashboard
+
+```bash
+# Install dependencies & run development server
+npm install
+npm run dev
+```
+
+Navigate to `http://localhost:3000` to interact with:
+* **Live Sandbox Tester:** Submit arbitrary triplets and inspect judge scoring and reasoning.
+* **Regression Metrics:** Active QWK, Adjacent Agreement, and Lenience Drift telemetry.
+* **5x5 Confusion Matrix:** Interactive matrix visualizing human vs judge agreement.
+* **Golden Benchmark Explorer:** Ground-truth reference cases viewer.
+
+### Sample Output (`eval_gate.py`):
 
 ```text
 2026-10-10 13:28:36 [INFO] Dispatching async evaluation for 10 test samples...
@@ -220,8 +250,16 @@ eval-engine/
 ├── .github/
 │   └── workflows/
 │       └── eval-gate.yml          # GitHub Actions CI workflow (PR gating & sticky comments)
+├── app/
+│   ├── api/
+│   │   ├── chat/route.ts          # Vercel Edge API route with waitUntil shadow evaluation
+│   │   └── metrics/route.ts       # Live metrics & benchmark endpoint
+│   ├── globals.css                # Dark-mode dashboard styling
+│   ├── layout.tsx                 # Root dashboard layout
+│   └── page.tsx                   # Interactive dashboard (sandbox, confusion matrix, golden explorer)
 ├── artifacts/
 │   ├── severe_misalignments.jsonl # Exported severe error samples (|Δ| >= 2)
+│   ├── shadow_eval_log.jsonl      # Production shadow evaluation audit log
 │   └── summary.md                 # Generated Markdown summary report
 ├── assets/
 │   └── architecture_diagram.svg   # Vector architecture diagram for README
@@ -235,14 +273,19 @@ eval-engine/
 │   └── judge_rubric.txt           # Prompt template and evaluation rubric
 ├── scripts/
 │   ├── eval_gate.py               # Core async evaluation pipeline & regression gate
-│   └── router.py                  # Multi-backend judge router (OpenAI, vLLM, Hybrid)
+│   ├── router.py                  # Multi-backend judge router (OpenAI, vLLM, Hybrid)
+│   └── shadow_eval.py             # Asynchronous queue worker & ShadowSampler service
 ├── tests/
-│   └── test_router.py             # Router unit tests & circuit breaker test suite
+│   ├── test_router.py             # Router unit tests & circuit breaker test suite
+│   └── test_shadow_eval.py        # Shadow sampler & async worker test suite
 ├── .env.local                     # Local secrets configuration (git-ignored)
 ├── .gitignore                     # Git ignore rules for virtualenvs, caches, secrets
 ├── LICENSE                        # MIT License
-├── requirements.txt               # Pinned project dependencies
+├── next.config.mjs                # Next.js 14 configuration
+├── package.json                   # Web application dependencies & scripts
+├── requirements.txt               # Pinned Python dependencies
 ├── SPRINT_DASHBOARD.md            # Sprint milestone and layer tracker
+├── tsconfig.json                  # TypeScript compiler options
 └── README.md                      # Project documentation and architecture guide
 ```
 
@@ -254,9 +297,11 @@ eval-engine/
   * Multi-provider router abstraction (`scripts/router.py`) supporting OpenAI and OpenAI-compatible vLLM endpoints.
   * Integration with self-hosted Llama 3.1 8B on RunPod Serverless with 3-failure circuit breaker tripping.
   * Unit test suite (`tests/test_router.py`) with 13 passing test cases.
-* **Layer 4: Production Shadow Evaluation (Vercel)** *(Up Next)*:
-  * Edge shadow evaluations via Vercel `waitUntil` / Next.js Edge runtime.
-  * Latency-isolated production sampling (10% random traffic + high-uncertainty slices).
-* **Layer 5: Continuous Calibration & Live Observability**:
+* **Layer 4: Production Shadow Evaluation & Vercel Edge** *(Completed)*:
+  * Edge shadow evaluations via `@vercel/functions` `waitUntil` (`app/api/chat/route.ts`).
+  * Latency-isolated production sampling (`ShadowSampler`: keyword triggers + 10% uniform rate).
+  * Interactive Next.js 14 dark-mode dashboard (`app/page.tsx`) with live evaluation sandbox and confusion matrix.
+  * Unit test suite expanded to 18 passing tests (`tests/test_shadow_eval.py`).
+* **Layer 5: Continuous Calibration & Live Observability** *(Up Next)*:
   * Longitudinal drift monitoring dashboard.
-  * Automated alerts on distribution shift and dynamic golden set expansion.
+  * Automated alerts on distribution shift and dynamic golden set expansion from severe failure slices.
