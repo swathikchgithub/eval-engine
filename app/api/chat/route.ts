@@ -46,14 +46,14 @@ const rateLimitMap = new Map<string, number[]>();
 
 function pruneExpiredRateLimits(now: number): void {
   const windowStart = now - RATE_LIMIT_WINDOW_MS;
-  for (const [ip, timestamps] of rateLimitMap.entries()) {
+  rateLimitMap.forEach((timestamps, ip) => {
     const valid = timestamps.filter((t) => t > windowStart);
     if (valid.length === 0) {
       rateLimitMap.delete(ip);
     } else {
       rateLimitMap.set(ip, valid);
     }
-  }
+  });
 }
 
 function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number; retryAfterS: number } {
