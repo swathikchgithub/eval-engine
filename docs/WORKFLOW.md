@@ -117,6 +117,24 @@ To verify a production build:
 npm run build
 ```
 
+### 2.8 Running Continuous Calibration & Longitudinal Drift Monitor (Layer 5)
+Analyze historical shadow logs against baseline distributions:
+```bash
+python scripts/drift_monitor.py
+# Or via npm script:
+npm run eval:drift
+```
+This generates:
+* **Drift Summary JSON:** `artifacts/drift_report.json`
+* **Markdown Calibration Report:** `artifacts/drift_report.md`
+* **Candidate Golden Set Failures:** `artifacts/curated_candidates.jsonl`
+
+### 2.9 Running Complete Unified Test Pyramid
+Run all 36 Python unit tests and Playwright browser tests in a single command:
+```bash
+npm run test:all
+```
+
 ---
 
 ## 3. Curating the Golden Benchmark Dataset

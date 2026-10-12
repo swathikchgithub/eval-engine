@@ -344,9 +344,46 @@ To prevent visual and client-side JavaScript regressions, Playwright tests the r
 
 ---
 
-## 9. Upcoming Extension: Layer 5 Continuous Calibration & Longitudinal Drift
+---
 
-For Layer 5, the evaluation system will continuously monitor production telemetry:
-1. **Longitudinal Metric Tracking:** Rolling window QWK and lenience drift calculated over daily/weekly production shadow samples.
-2. **Distribution Shift Alerts:** Statistical detection of score skew (e.g., sudden increase in 1s or 2s).
-3. **Dynamic Golden Set Curation:** Automatic slicing of production failures ($|\Delta| \ge 2$) for human annotation and automated inclusion in `data/eval_golden_set.jsonl`.
+## 9. Layer 5: Continuous Calibration, Drift Monitoring & Rate Limiting
+
+Layer 5 monitors production shadow evaluations (`artifacts/shadow_eval_log.jsonl`) against the ground-truth baseline to prevent silent degradation and grade deflation over time.
+
+### 9.1 Mathematical Formulation of Distribution Drift
+
+#### Population Stability Index (PSI)
+Quantifies divergence between the baseline golden distribution $P = \{p_1, \dots, p_5\}$ and production distribution $Q = \{q_1, \dots, q_5\}$ across the 5-point rubric:
+$$\text{PSI} = \sum_{i=1}^5 (q_i - p_i) \cdot \ln\left(\frac{q_i}{p_i}\right)$$
+Laplace smoothing with $\epsilon = 10^{-4}$ ensures stability for rare categories.
+* $\text{PSI} < 0.10$: **Stable** (Nominal calibration).
+* $0.10 \le \text{PSI} < 0.25$: **Warning** (Moderate distribution shift).
+* $\text{PSI} \ge 0.25$: **Critical Alert** (Significant drift requiring judge prompt or model re-calibration).
+
+#### Total Variation Distance (TVD)
+$$\text{TVD} = \frac{1}{2} \sum_{i=1}^5 |q_i - p_i| \in [0, 1]$$
+Measures the maximum difference between probabilities that the two distributions can assign to any event.
+
+### 9.2 Rolling Window Reliability
+For shadow traffic samples with paired expert labels, the system evaluates:
+* **Rolling QWK:** Cohen's Quadratic Weighted Kappa over recent $W = 50$ samples.
+* **Rolling Lenience Drift:** $\Delta\mu = \bar{Y}_{\text{judge}} - \bar{Y}_{\text{human}}$.
+
+### 9.3 Production Failure Slicing Pipeline (`scripts/drift_monitor.py`)
+To enable continuous human-in-the-loop benchmark curation:
+1. **Severe Error Slicing:** Extracts requests where $|Y_{\text{judge}} - Y_{\text{human}}| \ge 2$.
+2. **Critical Domain Probes:** Flags queries where $Y_{\text{judge}} \le 2$ matching sensitive keywords (`refund`, `cancel`, `warranty`, `policy`, `security`).
+3. **Automated Export:** Appends flagged items to `artifacts/curated_candidates.jsonl` with reasons, ready for 1-click triage and benchmark promotion into `data/eval_golden_set.jsonl`.
+
+### 9.4 Inbound Edge Rate Limiter (`app/api/chat/route.ts`)
+To protect production edge workers and downstream LLM provider quotas:
+* **Sliding-Window Token Bucket:** Enforces a hard limit of 60 requests/minute per client IP.
+* **HTTP 429 Status:** Exceeding requests receive `429 Too Many Requests` with RFC-compliant headers:
+  * `Retry-After: <seconds>`
+  * `X-RateLimit-Limit: 60`
+  * `X-RateLimit-Remaining: <count>`
+
+### 9.5 Test Pyramid Summary
+* **Unit Tests (`tests/test_drift_monitor.py`):** 8 tests validating PSI, TVD, failure slicing triggers, and report generation.
+* **Full Python Suite (`npm run test:py`):** 36 unit tests across router, shadow queue, metrics formulas, and drift monitor.
+* **Playwright E2E (`e2e/dashboard.spec.ts`):** 6 tests validating the full DOM, interactive sandbox, confusion matrix, and Layer 5 calibration panel.

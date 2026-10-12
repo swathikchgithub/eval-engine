@@ -190,8 +190,8 @@ python -m unittest discover tests`;
                 </p>
               </div>
 
-              {/* 3 Pillars Visual Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px' }}>
+              {/* 4 Pillars Visual Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '16px' }}>
                   <div style={{ fontSize: '20px', marginBottom: '8px' }}>🛡️</div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginBottom: '4px' }}>Pillar 1: CI/CD Quality Gate</div>
@@ -204,7 +204,7 @@ python -m unittest discover tests`;
                   <div style={{ fontSize: '20px', marginBottom: '8px' }}>⚡</div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#34d399', marginBottom: '4px' }}>Pillar 2: Zero-Latency Edge</div>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Production queries return candidate output in <strong>&lt;15ms</strong>. Shadow evaluation audits out-of-band via Vercel <code>waitUntil</code>.
+                    Production queries return candidate output in <strong>&lt;15ms</strong> with 60 req/min rate limiting. Shadow eval audits out-of-band via Vercel <code>waitUntil</code>.
                   </p>
                 </div>
 
@@ -213,6 +213,14 @@ python -m unittest discover tests`;
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-purple)', marginBottom: '4px' }}>Pillar 3: Hybrid Routing</div>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Routes across open-weights (Llama 3.1 8B via vLLM) and hosted models with an automatic 3-failure circuit breaker to prevent downtime.
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '20px', marginBottom: '8px' }}>📈</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fbbf24', marginBottom: '4px' }}>Pillar 4: Drift & Calibration</div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Tracks PSI and TVD divergence in production, slicing severe anomalies (|Δ| ≥ 2) for continuous golden set curation.
                   </p>
                 </div>
               </div>
@@ -240,6 +248,11 @@ python -m unittest discover tests`;
                       <td style={{ padding: '8px 6px', fontWeight: 600, color: '#fff' }}>Adjacent Agreement (±1)</td>
                       <td style={{ padding: '8px 6px', color: '#34d399', fontWeight: 600 }}>≥ 90.0%</td>
                       <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>Ensures subjective scoring remains within 1-point boundary</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                      <td style={{ padding: '8px 6px', fontWeight: 600, color: '#fff' }}>Population Stability Index (PSI)</td>
+                      <td style={{ padding: '8px 6px', color: '#34d399', fontWeight: 600 }}>&lt; 0.10</td>
+                      <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>Detects score skew & deflation in live production traffic</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
                       <td style={{ padding: '8px 6px', fontWeight: 600, color: '#fff' }}>Lenience Drift (|Δμ|)</td>

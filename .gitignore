@@ -32,6 +32,7 @@ playwright-report/
 
 # Dynamic Evaluation Artifacts
 artifacts/*.jsonl
+artifacts/*.json
 artifacts/*.md
 !artifacts/.gitkeep
 

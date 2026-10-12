@@ -26,6 +26,32 @@ interface ShadowLog {
 
 const TRIGGER_KEYWORDS = ['refund', 'cancel', 'warranty', 'policy', 'error', 'security', 'prorated'];
 
+// Sliding-window Rate Limiter (60 requests per minute per IP)
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 60;
+const rateLimitMap = new Map<string, number[]>();
+
+function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number; retryAfterS: number } {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (rateLimitMap.get(clientIp) || []).filter((t) => t > windowStart);
+
+  if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const oldest = timestamps[0];
+    const retryAfterS = Math.max(1, Math.ceil((oldest + RATE_LIMIT_WINDOW_MS - now) / 1000));
+    rateLimitMap.set(clientIp, timestamps);
+    return { allowed: false, remaining: 0, retryAfterS };
+  }
+
+  timestamps.push(now);
+  rateLimitMap.set(clientIp, timestamps);
+  return {
+    allowed: true,
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - timestamps.length),
+    retryAfterS: 0,
+  };
+}
+
 function shouldSample(prompt: string, context?: string, forceEval?: boolean): { sampled: boolean; reason: string } {
   if (forceEval) return { sampled: true, reason: 'force_eval' };
 
@@ -106,6 +132,29 @@ async function performShadowEvaluation(
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
+  // Rate Limiting: extract client IP and check sliding window
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+                   req.headers.get('x-real-ip') ||
+                   '127.0.0.1';
+  const { allowed, remaining, retryAfterS } = checkRateLimit(clientIp);
+
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        error: 'Too Many Requests: Rate limit exceeded (60 req/min). Please try again shortly.',
+        retry_after_s: retryAfterS,
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfterS),
+          'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+          'X-RateLimit-Remaining': '0',
+        },
+      }
+    );
+  }
+
   try {
     const body = await req.json();
     const { prompt, context = '', force_eval = false } = body;
@@ -172,17 +221,25 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Return user response immediately
-    return NextResponse.json({
-      id: reqId,
-      response: candidateResponse,
-      user_latency_ms: userFacingLatencyMs,
-      shadow_evaluation: {
-        sampled,
-        reason,
-        status: sampled ? 'RUNNING_IN_BACKGROUND' : 'SKIPPED',
-        note: sampled ? 'Evaluated asynchronously via Vercel waitUntil with 0ms added to user' : 'Unsampled query',
+    return NextResponse.json(
+      {
+        id: reqId,
+        response: candidateResponse,
+        user_latency_ms: userFacingLatencyMs,
+        shadow_evaluation: {
+          sampled,
+          reason,
+          status: sampled ? 'RUNNING_IN_BACKGROUND' : 'SKIPPED',
+          note: sampled ? 'Evaluated asynchronously via Vercel waitUntil with 0ms added to user' : 'Unsampled query',
+        },
       },
-    });
+      {
+        headers: {
+          'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+          'X-RateLimit-Remaining': String(remaining),
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }

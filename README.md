@@ -297,6 +297,9 @@ eval-engine/
 ├── tests/
 │   ├── test_e2e_api.py            # Live End-to-End HTTP tests against /api/chat and /api/metrics
 │   ├── test_eval_metrics.py       # Unit tests for QWK, adjacent agreement, and drift math
+│   ├── test_drift_monitor.py      # Layer 5 statistical drift & failure slicing tests
+│   ├── test_e2e_api.py            # Live edge route API integration contracts
+│   ├── test_eval_metrics.py       # Pure mathematical verification tests
 │   ├── test_router.py             # Router unit tests & circuit breaker test suite
 │   └── test_shadow_eval.py        # Shadow sampler & async worker test suite
 ├── .env.local                     # Local secrets configuration (git-ignored)
@@ -313,17 +316,23 @@ eval-engine/
 
 ---
 
-## 🗺️ Roadmap & Next Layers
+## 🗺️ Roadmap & Sprint Milestones (All 5 Layers Completed)
 
+* **Layer 1: Core Eval Harness** *(Completed)*:
+  * Golden dataset benchmark (`data/eval_golden_set.jsonl`), calibrated rubric (`prompts/judge_rubric.txt`), and async metrics runner (`scripts/eval_gate.py`).
+* **Layer 2: CI/CD Regression Gate** *(Completed)*:
+  * GitHub Actions regression workflow (`.github/workflows/eval-gate.yml`), path filtering, artifact uploads, and sticky PR comments.
 * **Layer 3: Hybrid Routing & Self-Hosted Open Weights** *(Completed)*:
-  * Multi-provider router abstraction (`scripts/router.py`) supporting OpenAI and OpenAI-compatible vLLM endpoints.
-  * Integration with self-hosted Llama 3.1 8B on RunPod Serverless with 3-failure circuit breaker tripping.
-  * Unit test suite (`tests/test_router.py`) with 13 passing test cases.
-* **Layer 4: Production Shadow Evaluation & Vercel Edge** *(Completed)*:
+  * Multi-provider router abstraction (`scripts/router.py`) supporting OpenAI (`gpt-4o-mini`) and vLLM (`Llama-3.1-8B-Instruct`).
+  * 3-failure circuit breaker tripping with zero-overhead fallback and 13 unit tests.
+* **Layer 4: Production Shadow Evaluation & Vercel Edge** *(Completed & Live)*:
   * Edge shadow evaluations via `@vercel/functions` `waitUntil` (`app/api/chat/route.ts`).
-  * Latency-isolated production sampling (`ShadowSampler`: keyword triggers + 10% uniform rate).
-  * Interactive Next.js 14 dark-mode dashboard (`app/page.tsx`) with live evaluation sandbox, confusion matrix, and interactive workflow guide modal (`WorkflowModal.tsx`).
-  * Complete test suite expanded to 33 passing unit, live API, and Playwright browser tests (`npm run test:all`).
-* **Layer 5: Continuous Calibration & Live Observability** *(Up Next)*:
-  * Longitudinal drift monitoring dashboard.
-  * Automated alerts on distribution shift and dynamic golden set expansion from severe failure slices.
+  * Interactive Next.js 14 dashboard live on Vercel at [eval-engine-coral.vercel.app](https://eval-engine-coral.vercel.app/).
+  * Playwright browser E2E test suite (`e2e/dashboard.spec.ts`).
+* **Layer 5: Continuous Calibration & Live Observability** *(Completed)*:
+  * Longitudinal drift monitoring CLI and engine (`scripts/drift_monitor.py` / `npm run eval:drift`).
+  * Population Stability Index (PSI, threshold `< 0.10`) and Total Variation Distance (TVD) distribution skew detection.
+  * Automated production failure slicing ($|\Delta| \ge 2$, low scores $\le 2$ on critical keyword queries) with export to `artifacts/curated_candidates.jsonl`.
+  * Inbound Edge Rate Limiter (`app/api/chat/route.ts`) enforcing 60 requests/minute per IP with `HTTP 429 Too Many Requests` and standard `Retry-After` headers.
+  * Real-time calibration dashboard panel in `app/page.tsx` with score distribution comparison and candidate triage.
+  * Unified test pyramid: 36 Python unit tests + Playwright browser tests passing (`npm run test:all`).

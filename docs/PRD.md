@@ -90,10 +90,13 @@ Layer 1: Core Eval Harness (Done)
 * Telemetry audit logger writing to `artifacts/shadow_eval_log.jsonl`.
 * Full unit test suite ([tests/test_shadow_eval.py](tests/test_shadow_eval.py)).
 
-### Layer 5: Continuous Calibration & Observability *(Status: Up Next)*
-* Longitudinal metric tracking dashboard.
-* Automated alerting on statistical distribution shifts and lenience drift.
-* Automated golden set curation from production failure slices.
+### Layer 5: Continuous Calibration & Observability *(Status: Completed)*
+* Longitudinal metric tracking and rolling calibration engine ([scripts/drift_monitor.py](scripts/drift_monitor.py)).
+* Statistical distribution divergence tracking via Population Stability Index (PSI, threshold `< 0.10`) and Total Variation Distance (TVD).
+* Automated production failure slicing ($|\Delta| \ge 2$ or scores $\le 2$ on critical domain keywords) exporting to `artifacts/curated_candidates.jsonl` for human review.
+* Inbound Edge Rate Limiting ([app/api/chat/route.ts](app/api/chat/route.ts)) enforcing a 60 req/min sliding-window ceiling with `HTTP 429 Too Many Requests` and standard `Retry-After` headers.
+* Real-time calibration dashboard panel in [app/page.tsx](app/page.tsx) with score distribution delta comparison and interactive candidate curation approvals.
+* Comprehensive unit test suite ([tests/test_drift_monitor.py](tests/test_drift_monitor.py)) and browser end-to-end verification ([e2e/dashboard.spec.ts](e2e/dashboard.spec.ts)).
 
 ---
 

@@ -102,4 +102,21 @@ test.describe('LLM Evaluation Engine — Production Dashboard E2E', () => {
     await expect(page.locator('text=Rows represent Human Ground Truth; columns represent LLM Judge predictions.')).toBeVisible();
     await expect(page.locator('text=Zero Severe Errors:')).toBeVisible();
   });
+
+  test('6. Layer 5 Continuous Calibration panel renders PSI, TVD, and failure slices table', async ({ page }) => {
+    // Check Layer 5 panel exists
+    const l5Panel = page.locator('#layer5-drift-panel');
+    await expect(l5Panel).toBeVisible();
+    await expect(l5Panel).toContainText('Layer 5: Longitudinal Calibration');
+    await expect(l5Panel).toContainText('Population Stability Index (PSI)');
+    await expect(l5Panel).toContainText('Total Variation Distance (TVD)');
+
+    // Verify candidate failure slices table renders
+    await expect(l5Panel).toContainText('Production Failure Slices');
+    const triageBtn = l5Panel.locator('button:has-text("Approve for Golden Set")').first();
+    if (await triageBtn.isVisible()) {
+      await triageBtn.click();
+      await expect(page.locator('text=triaged: Promoted to ground-truth candidate queue')).toBeVisible();
+    }
+  });
 });
