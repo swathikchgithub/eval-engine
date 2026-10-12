@@ -13,7 +13,9 @@
     "test:all": "npm run test:py && npm run test:e2e",
     "eval:gate": "./venv/bin/python scripts/eval_gate.py",
     "eval:shadow": "./venv/bin/python scripts/shadow_eval.py",
-    "eval:drift": "./venv/bin/python scripts/drift_monitor.py"
+    "eval:drift": "./venv/bin/python scripts/drift_monitor.py",
+    "monitor": "./venv/bin/python scripts/monitor_agent.py --once",
+    "monitor:daemon": "./venv/bin/python scripts/monitor_agent.py --daemon"
   },
   "dependencies": {
     "@vercel/functions": "^1.4.2",

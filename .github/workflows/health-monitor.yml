@@ -1,0 +1,54 @@
+name: Autonomous Website & Quality Gate Monitor
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    name: Probe Production Quality Gate & Synthetics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Node & Playwright for Browser Synthetics
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Execute Monitoring Sweep
+        run: |
+          python scripts/monitor_agent.py --once
+
+      - name: Publish Live Status to GitHub Summary
+        if: always()
+        run: |
+          if [ -f "artifacts/monitoring/STATUS_REPORT.md" ]; then
+            cat artifacts/monitoring/STATUS_REPORT.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Monitoring Audit Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-telemetry
+          path: artifacts/monitoring/
+          if-no-files-found: ignore
+          retention-days: 30
