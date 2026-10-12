@@ -2,6 +2,9 @@
 
 A production-grade, latency-isolated LLM evaluation harness and automated CI/CD regression gate designed to enforce strict response quality, prevent model/prompt drift, and block regressions before deployment.
 
+🌐 **Live Production Deployment:** [https://eval-engine-coral.vercel.app/](https://eval-engine-coral.vercel.app/)  
+📦 **GitHub Repository:** [https://github.com/swathikchgithub/eval-engine](https://github.com/swathikchgithub/eval-engine)
+
 ---
 
 ## 🏛️ System Architecture
