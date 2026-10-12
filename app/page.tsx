@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import WorkflowModal from './components/WorkflowModal';
 
 interface MetricState {
   qwk: number;
@@ -33,6 +34,9 @@ export default function DashboardPage() {
 
   const [goldenSamples, setGoldenSamples] = useState<GoldenSample[]>([]);
   const [selectedSample, setSelectedSample] = useState<GoldenSample | null>(null);
+
+  // Workflow Guide Modal state
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
 
   // Live Edge Chat Sandbox state
   const [prompt, setPrompt] = useState('What is the return policy for hardware items?');
@@ -108,11 +112,43 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '12px' }}>
             <span style={{ color: 'var(--text-muted)' }}>Judge: </span>
             <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{metrics.router_backend}</span>
           </div>
+
+          <button
+            onClick={() => setIsWorkflowOpen(true)}
+            id="open-workflow-modal-btn"
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(129, 140, 248, 0.25) 100%)',
+              color: '#ffffff',
+              border: '1px solid rgba(56, 189, 248, 0.5)',
+              fontSize: '13px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 0 15px rgba(56, 189, 248, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(56, 189, 248, 0.35)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 0 15px rgba(56, 189, 248, 0.2)';
+            }}
+          >
+            <span>📖</span>
+            <span>How to Use & Workflow Guide</span>
+          </button>
+
           <a
             href="https://github.com/swathikchgithub/eval-engine"
             target="_blank"
@@ -438,6 +474,12 @@ export default function DashboardPage() {
           </table>
         </div>
       </section>
+
+      {/* Interactive How It Works & Workflow Guide Modal */}
+      <WorkflowModal
+        isOpen={isWorkflowOpen}
+        onClose={() => setIsWorkflowOpen(false)}
+      />
     </main>
   );
 }
