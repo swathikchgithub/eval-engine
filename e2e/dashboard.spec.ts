@@ -19,18 +19,18 @@ test.describe('LLM Evaluation Engine — Production Dashboard E2E', () => {
 
     // Verify 5 Primary Quality Gate KPI Cards
     await expect(page.locator('text=Quadratic Weighted Kappa')).toBeVisible();
-    await expect(page.locator('text=0.953')).toBeVisible();
+    await expect(page.getByText('0.953').first()).toBeVisible();
 
-    await expect(page.locator('text=Adjacent Agreement (+-1)')).toBeVisible();
+    await expect(page.getByText('Adjacent Agreement (±1)', { exact: true })).toBeVisible();
     await expect(page.locator('text=100.0%')).toBeVisible();
 
-    await expect(page.locator('text=Exact Match')).toBeVisible();
+    await expect(page.locator('text=Exact Agreement (|Δ| = 0)')).toBeVisible();
     await expect(page.locator('text=70.0%')).toBeVisible();
 
     await expect(page.locator('text=Lenience Drift (Δμ)')).toBeVisible();
     await expect(page.locator('text=-0.30')).toBeVisible();
 
-    await expect(page.locator('text=Severe Misalignments')).toBeVisible();
+    await expect(page.locator('text=Severe Errors (|Δ| ≥ 2)')).toBeVisible();
     await expect(page.locator('text=Zero Severe Errors')).toBeVisible();
   });
 
@@ -67,8 +67,8 @@ test.describe('LLM Evaluation Engine — Production Dashboard E2E', () => {
     // Verify table header
     await expect(page.locator('text=Golden Benchmark Dataset')).toBeVisible();
 
-    // Wait for golden samples to populate
-    const rows = page.locator('table tbody tr');
+    // Wait for golden samples to populate in the golden benchmark section
+    const rows = page.locator('section:has-text("Golden Benchmark Dataset") table tbody tr');
     await expect(rows).toHaveCount(10);
 
     // Verify first row contains tc_01
@@ -77,8 +77,8 @@ test.describe('LLM Evaluation Engine — Production Dashboard E2E', () => {
   });
 
   test('4. Live Edge Sandbox triggers inference and renders result card', async ({ page }) => {
-    const promptInput = page.locator('#prompt-input');
-    const contextInput = page.locator('#context-input');
+    const promptInput = page.locator('#sandbox-prompt-input');
+    const contextInput = page.locator('#sandbox-context-input');
     const dispatchBtn = page.locator('#send-edge-request-btn');
 
     await expect(promptInput).toBeVisible();
